@@ -63,6 +63,7 @@ router.post('/conversations/webhook', async (req, res) => {
       .maybeSingle()
 
     if (!context?.group_id) {
+      console.log('[webhook] inbound one-to-one: no context for', { to: toE164Num, from: fromE164 })
       return res.status(200).send('ok')
     }
     const groupId = context.group_id
@@ -89,13 +90,23 @@ router.post('/conversations/webhook', async (req, res) => {
       (m) => m.phone && toE164(m.phone) !== fromE164
     )
 
+    console.log('[webhook] inbound one-to-one received', {
+      group_id: groupId,
+      from: fromE164,
+      author: authorName,
+      body_preview: String(Body).slice(0, 50),
+      relay_to_count: otherMembers.length,
+      relay_to_phones: otherMembers.map((m) => m.phone),
+    })
+
     const relayBody = `${authorName}: ${Body}`
     for (const m of otherMembers || []) {
       if (!m.phone) continue
       try {
         await sendSMS(m.phone, relayBody)
+        console.log('[webhook] relay sent to', m.phone)
       } catch (err) {
-        console.error(`[webhook] relay to ${m.phone} failed:`, err)
+        console.error('[webhook] relay to', m.phone, 'failed:', err)
       }
     }
 

@@ -61,6 +61,24 @@ If the cron runs and your API sends the question, but **no one receives the text
 
 When using **one-to-one SMS** (`SEND_WEEKLY_VIA_ONE_TO_ONE_SMS=true`), replies to your Twilio number are not Conversation events—they are standard inbound SMS. The same webhook (`/twilio/conversations/webhook`) handles both. Ensure your **phone number’s** “A message comes in” webhook is set to that URL (Phone Numbers → [your number] → Messaging → “A message comes in” → Webhook). The API will look up the group from the last one-to-one send, log the reply in `group_messages`, and relay it to the other members as `AuthorName: reply text`.
 
+### Testing replies with only the virtual number
+
+You only need the Twilio virtual number and **one** phone (yours) to confirm that replies are **received**; you need **two** recipient phones to confirm **relay**.
+
+1. **Confirm reply is received**
+    - Create a group with **one** member: your phone number. Trigger the cron so the weekly question is sent to your phone (and `one_to_one_send_context` gets a row).
+    - From your phone, reply to the Twilio number (e.g. “Test reply”).
+    - **Check API logs** (Render → your service → Logs). You should see: `[webhook] inbound one-to-one received` with `group_id`, `from`, `author`, `body_preview`, and `relay_to_count: 0` (no other members).
+    - **Check Supabase**: table `group_messages` should have a new row with `direction: 'inbound'`, your author name, and the reply body. That confirms the virtual number’s inbound SMS hit the webhook and was stored.
+
+2. **Confirm relay**
+    - Add a **second** group member with a different phone that can receive SMS (e.g. a second line or a friend’s number; on Twilio trial it must be a verified number). Trigger the cron again so both members get the question (and context is recorded for both).
+    - Reply from **your** phone to the Twilio number.
+    - **Check logs**: `relay_to_count: 1`, `relay_to_phones: [<other number>]`, and `[webhook] relay sent to <number>`.
+    - **Check the other phone**: it should receive an SMS like `YourName: Test reply`.
+
+If you see `no context for` in the logs, the reply wasn’t tied to a group—trigger the cron first so a one-to-one send has been made to your number for that group, then reply again.
+
 ## 5. Cron: weekly questions
 
 Something must call your API on a schedule (e.g. every hour) so questions are sent when a group’s schedule matches.
