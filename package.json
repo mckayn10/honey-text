@@ -11,6 +11,7 @@
     "build": "npm run build --workspace=app && npm run build --workspace=api"
   },
   "devDependencies": {
+    "@types/luxon": "^3.4.2",
     "concurrently": "^8.2.2"
   }
 }

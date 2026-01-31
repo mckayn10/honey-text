@@ -1,10 +1,15 @@
 import express from 'express'
 import { authenticateCron } from '../middleware/cronAuth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
-import { sendConversationMessage } from '../lib/twilio.js'
+import { sendConversationMessage, sendSMS } from '../lib/twilio.js'
 import { DateTime } from 'luxon'
 
 const router = express.Router()
+
+/** When set (e.g. 'true', '1'), send weekly questions via one-to-one SMS (toll-free friendly). When unset, use Group MMS (Conversation). */
+const SEND_WEEKLY_VIA_ONE_TO_ONE_SMS =
+  process.env.SEND_WEEKLY_VIA_ONE_TO_ONE_SMS === 'true' ||
+  process.env.SEND_WEEKLY_VIA_ONE_TO_ONE_SMS === '1'
 
 // POST /cron/send-weekly-questions - Send weekly questions (cron protected)
 router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
@@ -58,48 +63,91 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
             const questionIndex = sendState.last_question_index % questions.length
             const question = questions[questionIndex]
 
-            if (!group.conversation_sid) continue
+            const nextIndex = (sendState.last_question_index + 1) % questions.length
 
-            const authorIdentity = `honeytext-${group.id}`
-            const messageResult = await sendConversationMessage(
-              group.conversation_sid,
-              question.body,
-              authorIdentity
-            )
+            if (SEND_WEEKLY_VIA_ONE_TO_ONE_SMS) {
+              // One-to-one SMS (toll-free friendly). Recipients = group_members with phone.
+              const { data: members } = await supabaseAdmin
+                .from('group_members')
+                .select('phone')
+                .eq('group_id', group.id)
+                .not('phone', 'is', null)
 
-            // Log Twilio delivery info for debugging (delivery.sent, delivered, failed, undelivered)
-            const delivery = (messageResult as any)?.delivery
-            if (delivery) {
-              console.log(
-                `[cron] group=${group.id} conversation=${group.conversation_sid} message_sid=${(messageResult as any)?.sid} delivery=${JSON.stringify(delivery)}`
-              )
-            }
+              const sent: string[] = []
+              const failed: string[] = []
+              for (const m of members || []) {
+                if (!m.phone) continue
+                try {
+                  await sendSMS(m.phone, question.body)
+                  sent.push(m.phone)
+                } catch (err: any) {
+                  failed.push(m.phone)
+                  console.error(`[cron] one-to-one SMS failed for ${m.phone}:`, err?.message || err)
+                }
+              }
 
-            await supabaseAdmin
-              .from('group_messages')
-              .insert({
+              await supabaseAdmin.from('group_messages').insert({
                 group_id: group.id,
                 conversation_sid: group.conversation_sid,
                 author: 'honeytext',
                 body: question.body,
                 direction: 'outbound',
               })
+              await supabaseAdmin
+                .from('group_send_state')
+                .update({ last_question_index: nextIndex })
+                .eq('group_id', group.id)
 
-            // Update send state (increment and wrap)
-            const nextIndex = (sendState.last_question_index + 1) % questions.length
-            await supabaseAdmin
-              .from('group_send_state')
-              .update({ last_question_index: nextIndex })
-              .eq('group_id', group.id)
+              results.push({
+                group_id: group.id,
+                group_name: group.name,
+                members_sent: 'one_to_one_sms',
+                question: question.body,
+                sent: sent.length,
+                failed: failed.length,
+                failed_phones: failed.length > 0 ? failed : undefined,
+              })
+            } else {
+              // Group MMS (Conversation). Requires conversation_sid and A2P 10DLC for delivery.
+              if (!group.conversation_sid) continue
 
-            results.push({
-              group_id: group.id,
-              group_name: group.name,
-              members_sent: 'conversation',
-              question: question.body,
-              message_sid: (messageResult as any)?.sid,
-              delivery: delivery || null,
-            })
+              const authorIdentity = `honeytext-${group.id}`
+              const messageResult = await sendConversationMessage(
+                group.conversation_sid,
+                question.body,
+                authorIdentity
+              )
+
+              const delivery = (messageResult as any)?.delivery
+              if (delivery) {
+                console.log(
+                  `[cron] group=${group.id} conversation=${group.conversation_sid} message_sid=${(messageResult as any)?.sid} delivery=${JSON.stringify(delivery)}`
+                )
+              }
+
+              await supabaseAdmin
+                .from('group_messages')
+                .insert({
+                  group_id: group.id,
+                  conversation_sid: group.conversation_sid,
+                  author: 'honeytext',
+                  body: question.body,
+                  direction: 'outbound',
+                })
+              await supabaseAdmin
+                .from('group_send_state')
+                .update({ last_question_index: nextIndex })
+                .eq('group_id', group.id)
+
+              results.push({
+                group_id: group.id,
+                group_name: group.name,
+                members_sent: 'conversation',
+                question: question.body,
+                message_sid: (messageResult as any)?.sid,
+                delivery: delivery || null,
+              })
+            }
           }
         }
       } catch (groupError: any) {

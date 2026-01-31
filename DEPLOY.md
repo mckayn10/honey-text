@@ -20,6 +20,7 @@ Ensure your code is pushed to GitHub (or GitLab). Render will deploy from this r
     - `TWILIO_PHONE_NUMBER` (E.164, e.g. `+15551234567`)
     - `CRON_SECRET` (pick a long random string; you’ll use it to call the cron endpoint)
     - `CORS_ORIGIN` (your frontend URL, e.g. `https://your-app.vercel.app` or `http://localhost:5173` for local dev)
+    - **`SEND_WEEKLY_VIA_ONE_TO_ONE_SMS`** (optional) – set to `true` or `1` to send weekly questions via one-to-one SMS (toll-free friendly). Leave unset to use Group MMS once A2P 10DLC is done.
 6. Click **Apply** and wait for the first deploy.
 
 ## 3. Get your API URL
@@ -83,6 +84,11 @@ Something must call your API on a schedule (e.g. every hour) so questions are se
 
 The API only sends questions for groups whose `schedule_day` and `schedule_time` (in their timezone) fall within the current hour.
 
+### Toll-free / one-to-one SMS vs Group MMS
+
+- **One-to-one SMS** (toll-free friendly): Set `SEND_WEEKLY_VIA_ONE_TO_ONE_SMS=true` (or `1`) in the API env. The cron sends the question via regular SMS to each group member’s phone (one message per member). Use this with a **toll-free** number and [toll-free verification](https://www.twilio.com/docs/usage/tutorials/how-to-use-your-free-trial-account#toll-free-verification-us-and-canada-only) so you can test on a trial account. Recipients must be in **Verified Caller IDs** on trial.
+- **Group MMS** (Conversation): Leave `SEND_WEEKLY_VIA_ONE_TO_ONE_SMS` **unset**. The cron sends one message to the Twilio Conversation; Twilio delivers to all participants (group thread). Requires a **US/Canada long code** and **A2P 10DLC** registration for delivery. Once A2P is done, unset or remove `SEND_WEEKLY_VIA_ONE_TO_ONE_SMS` and use your long code to switch back to Group MMS.
+
 ## 6. Point the frontend at the API
 
 In your frontend env (e.g. Vite `.env`), set the API base URL to your Render URL:
@@ -123,9 +129,12 @@ Use this checklist to narrow it down.
 
 ### 5. A2P 10DLC (US long code)
 
-- US carriers can block or drop messages from numbers that aren’t registered for A2P 10DLC.
-    - In **Twilio Console**, check your number’s **A2P 10DLC** status (e.g. on the number’s page or under **Messaging** → **Regulatory**).
-    - If it says registration is required or pending, complete **brand + campaign** registration. Until that’s done, delivery can fail with no clear error.
+- US carriers block messages from unregistered long codes. **Error 30034** = “US A2P 10DLC - Message from an Unregistered Number” — delivery will stay undelivered until you register.
+    - In **Twilio Console**: **Messaging** → **Regulatory Compliance** → **A2P 10DLC** (or search “A2P” / “10DLC”).
+    - **Register a Brand** (business/org details, EIN, address).
+    - **Register a Campaign** (use case, volume, sample messages), linked to the Brand.
+    - **Associate your Twilio number** with the approved Campaign.
+    - See [Twilio A2P 10DLC](https://www.twilio.com/docs/messaging/a2p-10dlc). Brand/campaign approval can take a few days.
 
 ### 6. Fallback: one-to-one SMS (no Group MMS)
 

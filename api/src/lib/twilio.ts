@@ -50,10 +50,10 @@ export function getTwilioNumber(): string {
     throw new Error('Missing TWILIO_PHONE_NUMBER')
   }
   const e164 = toE164(fromNumber)
-  // Group MMS projected address must be a US/Canada long code (+1, 11 digits)
+  // US/Canada: long code or toll-free (+1 and 12 chars). Group MMS requires long code; one-to-one SMS works with toll-free.
   if (!e164.startsWith('+1') || e164.length !== 12) {
     throw new Error(
-      'TWILIO_PHONE_NUMBER must be a US/Canada long code in E.164 (e.g. +15551234567). Group MMS does not support short codes or other regions.'
+      'TWILIO_PHONE_NUMBER must be a US/Canada number in E.164 (e.g. +15551234567 or +18005551234).'
     )
   }
   return e164
@@ -62,11 +62,12 @@ export function getTwilioNumber(): string {
 export async function sendSMS(to: string, message: string) {
   const client = getTwilioClient()
   const fromNumber = getTwilioNumber()
+  const toE164Address = toE164(to)
   try {
     const result = await client.messages.create({
       body: message,
       from: fromNumber,
-      to: to,
+      to: toE164Address,
     })
     return result
   } catch (error) {
