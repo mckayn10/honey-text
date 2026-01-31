@@ -108,9 +108,16 @@ export async function removeParticipant(conversationSid: string, participantSid:
     .remove()
 }
 
-export async function sendConversationMessage(conversationSid: string, body: string) {
+/**
+ * Send a message to a Conversation. For Group MMS, author must be the identity of the
+ * participant that has the projected address (our Twilio number), e.g. "honeytext-{group.id}".
+ */
+export async function sendConversationMessage(
+  conversationSid: string,
+  body: string,
+  author: string
+) {
   const client = getTwilioClient()
-  const author = getTwilioNumber()
   return client.conversations.v1
     .conversations(conversationSid)
     .messages.create({ author, body })

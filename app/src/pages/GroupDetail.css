@@ -12,6 +12,7 @@
 
 .group-header-row {
   display: flex;
+  flex-direction: row;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75rem;
@@ -181,6 +182,22 @@
 
 .button-primary:hover {
   transform: translateY(-1px);
+}
+
+.group-settings-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  color: #666;
+  text-decoration: none;
+  border-radius: 10px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.group-settings-icon:hover {
+  color: #333;
+  background: #f0f0f0;
 }
 
 .button-danger {

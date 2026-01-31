@@ -5,6 +5,7 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { NewGroup } from './pages/NewGroup';
 import { GroupDetail } from './pages/GroupDetail';
+import { GroupSettings } from './pages/GroupSettings';
 import { InvitePage } from './pages/InvitePage';
 import { Profile } from './pages/Profile';
 import { useAuth } from './lib/useAuth';
@@ -89,6 +90,14 @@ function App() {
 					element={
 						<ProtectedRoute>
 							<GroupDetail />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
+					path="/app/groups/:id/settings"
+					element={
+						<ProtectedRoute>
+							<GroupSettings />
 						</ProtectedRoute>
 					}
 				/>

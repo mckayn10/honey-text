@@ -128,20 +128,6 @@ export function GroupDetail() {
 		}
 	};
 
-	const handleDeleteGroup = async () => {
-		if (!group) return;
-		const confirmDelete = window.confirm(
-			`Delete "${group.name}"? This cannot be undone.`,
-		);
-		if (!confirmDelete) return;
-		try {
-			await apiRequest(`/groups/${group.id}`, { method: 'DELETE' });
-			navigate('/app/groups');
-		} catch (err: any) {
-			alert(err.message || 'Failed to delete group');
-		}
-	};
-
 	if (loading) {
 		return <div className="group-detail">Loading...</div>;
 	}
@@ -160,12 +146,31 @@ export function GroupDetail() {
 					>
 						← Back to Groups
 					</button>
-					<button
-						onClick={handleDeleteGroup}
-						className="button button-danger"
+					<Link
+						to={`/app/groups/${id}/settings`}
+						className="group-settings-icon"
+						title="Settings"
+						aria-label="Group settings"
 					>
-						Delete Group
-					</button>
+						<svg
+							width="22"
+							height="22"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							aria-hidden
+						>
+							<circle
+								cx="12"
+								cy="12"
+								r="3"
+							/>
+							<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+						</svg>
+					</Link>
 				</div>
 
 				<h1>{group.name}</h1>
@@ -174,7 +179,8 @@ export function GroupDetail() {
 					<p>
 						<strong>Schedule:</strong>{' '}
 						{getDayName(group.schedule_day)} at{' '}
-						{group.schedule_time} ({group.schedule_timezone})
+						{formatTime12(group.schedule_time)} (
+						{group.schedule_timezone})
 					</p>
 				</div>
 
@@ -329,6 +335,18 @@ function getDayName(day: number): string {
 		'Saturday',
 	];
 	return days[day] || 'Unknown';
+}
+
+/** Format "HH:mm" as 12-hour time e.g. "2:30 PM" */
+function formatTime12(time: string): string {
+	const [hStr, mStr] = time.split(':');
+	const hour = parseInt(hStr, 10);
+	const minute = mStr ? parseInt(mStr, 10) : 0;
+	const period = hour >= 12 ? 'PM' : 'AM';
+	const h12 = hour % 12 || 12;
+	return minute > 0
+		? `${h12}:${String(minute).padStart(2, '0')} ${period}`
+		: `${h12} ${period}`;
 }
 
 function getMembersWithOwner(

@@ -45,6 +45,17 @@ Tell Twilio where to send inbound conversation events (replies to the group thre
 
 (Exact menu names can vary; the goal is to set the webhook that receives Twilio Conversation message events so replies are logged to `group_messages`.)
 
+### Twilio Conversations: Addresses (if Group MMS doesn’t deliver)
+
+If the cron runs and your API sends the question, but **no one receives the text**, Twilio may require your number to be registered in **Conversations**:
+
+1. In Twilio Console go to **Conversations** → **Configuration** → **Addresses** (or **Manage** → **Addresses**).
+2. **Add address** (or **Create**): choose **SMS**, enter your Twilio number in E.164 (e.g. `+15551234567`).
+3. Optionally set **Auto-creation** to use your webhook URL so inbound messages to this number are tied to Conversations; your number-level “A message comes in” webhook may already handle that.
+4. Save. Then trigger the cron again and check delivery.
+
+**Global webhooks** (Conversations → Global webhooks) are for receiving Conversation events (e.g. `onMessageAdded`). If you already receive inbound replies at your webhook from the number config, you don’t need to duplicate that here unless you want service-level logging.
+
 ## 5. Cron: weekly questions
 
 Something must call your API on a schedule (e.g. every hour) so questions are sent when a group’s schedule matches.

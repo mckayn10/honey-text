@@ -1,0 +1,82 @@
+.group-settings-page {
+  min-height: 100vh;
+  background-color: white;
+  padding: 2.5rem 0 3rem;
+}
+
+.group-settings-page .container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.settings-header {
+  margin-bottom: 1rem;
+}
+
+.group-settings-page h1 {
+  color: #333;
+  margin-bottom: 1.5rem;
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+}
+
+.settings-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #eee;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+}
+
+.settings-section h2 {
+  color: #333;
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.settings-description {
+  color: #666;
+  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.45;
+}
+
+.settings-danger {
+  border-color: #f4c6c6;
+  background: #fffbfb;
+}
+
+.settings-danger .button-danger {
+  background: #fff;
+  color: #b42318;
+  border: 1px solid #f4c6c6;
+  padding: 0.7rem 1.2rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-danger .button-danger:hover {
+  background: #fff5f5;
+}
+
+.settings-danger .button-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button-link {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
+.button-link:hover {
+  color: #333;
+}
