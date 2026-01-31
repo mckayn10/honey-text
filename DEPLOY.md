@@ -93,6 +93,46 @@ Restart the dev server or redeploy the frontend so it uses this URL.
 
 ---
 
+## Still not receiving the text?
+
+Use this checklist to narrow it down.
+
+### 1. Cron response and API logs
+
+- Trigger the cron again. In the **JSON response**, check the `results` entry for your group: it now includes `message_sid` and `delivery` (e.g. `total`, `sent`, `delivered`, `failed`, `undelivered`). If `delivery.failed` or `delivery.undelivered` is not `"none"`, Twilio is reporting a delivery problem.
+- In **Render** → your API service → **Logs**, right after the cron run you should see a line like `[cron] group=... conversation=... message_sid=... delivery={...}`. That shows what Twilio returned for that send.
+
+### 2. Twilio Conversation and participants
+
+- In **Supabase** → `groups` table, copy the `conversation_sid` for your group (e.g. `CH...`).
+- In **Twilio Console** → **Messaging** → **Try it out** → **Conversations** (or **Develop** → **Conversations**), open **Conversations** and find that conversation (by SID or name).
+    - **Participants**: Is your phone number (+1 801 712 4604) listed as an SMS participant? If not, you’re not in the Conversation and won’t receive messages. Fix by re-saving your phone on the Profile page (or re-adding yourself as a member) so the API adds you to the Conversation again.
+    - **Messages**: Do you see the question message there? If yes, note its status (e.g. delivered / failed). Click the message for delivery details per participant.
+
+### 3. Twilio Monitor / Logs
+
+- **Twilio Console** → **Monitor** → **Logs** → **Messaging** (or **Conversations**). Filter by the time you ran the cron. Find the outbound message (by conversation or message SID from step 1).
+    - Check **Status** (e.g. delivered, failed, undelivered).
+    - If failed/undelivered, open the log entry and check **Error code** and **Error message** (e.g. 30003 = unverified number on trial, 21610 = blocked by carrier, etc.).
+
+### 4. Trial account and Verified Caller IDs
+
+- If the account is **Trial**, SMS is only delivered to **Verified Caller IDs**.
+    - **Phone Numbers** → **Manage** → **Verified Caller IDs**: ensure +1 801 712 4604 is verified.
+- If you’re sure the number is verified and the message shows “sent” but you still don’t receive it, try **upgrading the account** (even a small balance) to rule out trial-only restrictions.
+
+### 5. A2P 10DLC (US long code)
+
+- US carriers can block or drop messages from numbers that aren’t registered for A2P 10DLC.
+    - In **Twilio Console**, check your number’s **A2P 10DLC** status (e.g. on the number’s page or under **Messaging** → **Regulatory**).
+    - If it says registration is required or pending, complete **brand + campaign** registration. Until that’s done, delivery can fail with no clear error.
+
+### 6. Fallback: one-to-one SMS (no Group MMS)
+
+- If Group MMS keeps failing (carrier/registration/trial), you can temporarily send the question via **one-to-one SMS** (Twilio `messages.create` to each member’s phone) instead of the Conversation. That uses a different path and often works when Group MMS is blocked. Implementing that would be a small change to the cron (loop over members, send SMS per phone) and can be reverted once Group MMS is fixed.
+
+---
+
 **Summary**
 
 | Use            | URL / value                                                                                                      |

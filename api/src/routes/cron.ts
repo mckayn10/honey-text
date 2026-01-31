@@ -61,7 +61,19 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
             if (!group.conversation_sid) continue
 
             const authorIdentity = `honeytext-${group.id}`
-            await sendConversationMessage(group.conversation_sid, question.body, authorIdentity)
+            const messageResult = await sendConversationMessage(
+              group.conversation_sid,
+              question.body,
+              authorIdentity
+            )
+
+            // Log Twilio delivery info for debugging (delivery.sent, delivered, failed, undelivered)
+            const delivery = (messageResult as any)?.delivery
+            if (delivery) {
+              console.log(
+                `[cron] group=${group.id} conversation=${group.conversation_sid} message_sid=${(messageResult as any)?.sid} delivery=${JSON.stringify(delivery)}`
+              )
+            }
 
             await supabaseAdmin
               .from('group_messages')
@@ -85,6 +97,8 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
               group_name: group.name,
               members_sent: 'conversation',
               question: question.body,
+              message_sid: (messageResult as any)?.sid,
+              delivery: delivery || null,
             })
           }
         }
