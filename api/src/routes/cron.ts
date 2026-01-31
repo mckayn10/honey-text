@@ -1,7 +1,7 @@
 import express from 'express'
 import { authenticateCron } from '../middleware/cronAuth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
-import { sendConversationMessage, sendSMS } from '../lib/twilio.js'
+import { sendConversationMessage, sendSMS, getTwilioNumber, toE164 } from '../lib/twilio.js'
 import { DateTime } from 'luxon'
 
 const router = express.Router()
@@ -75,11 +75,18 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
 
               const sent: string[] = []
               const failed: string[] = []
+              const twilioNumber = getTwilioNumber()
               for (const m of members || []) {
                 if (!m.phone) continue
                 try {
                   await sendSMS(m.phone, question.body)
                   sent.push(m.phone)
+                  // Record context so inbound replies can be mapped to this group and relayed
+                  await supabaseAdmin.from('one_to_one_send_context').insert({
+                    twilio_number: twilioNumber,
+                    recipient_phone: toE164(m.phone),
+                    group_id: group.id,
+                  })
                 } catch (err: any) {
                   failed.push(m.phone)
                   console.error(`[cron] one-to-one SMS failed for ${m.phone}:`, err?.message || err)

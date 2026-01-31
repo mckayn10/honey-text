@@ -57,6 +57,10 @@ If the cron runs and your API sends the question, but **no one receives the text
 
 **Global webhooks** (Conversations → Global webhooks) are for receiving Conversation events (e.g. `onMessageAdded`). If you already receive inbound replies at your webhook from the number config, you don’t need to duplicate that here unless you want service-level logging.
 
+### One-to-one SMS replies (relay to group)
+
+When using **one-to-one SMS** (`SEND_WEEKLY_VIA_ONE_TO_ONE_SMS=true`), replies to your Twilio number are not Conversation events—they are standard inbound SMS. The same webhook (`/twilio/conversations/webhook`) handles both. Ensure your **phone number’s** “A message comes in” webhook is set to that URL (Phone Numbers → [your number] → Messaging → “A message comes in” → Webhook). The API will look up the group from the last one-to-one send, log the reply in `group_messages`, and relay it to the other members as `AuthorName: reply text`.
+
 ## 5. Cron: weekly questions
 
 Something must call your API on a schedule (e.g. every hour) so questions are sent when a group’s schedule matches.
