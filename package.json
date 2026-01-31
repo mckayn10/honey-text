@@ -1,0 +1,16 @@
+{
+  "name": "honey-text",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "app",
+    "api"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=app\" \"npm run dev --workspace=api\"",
+    "build": "npm run build --workspace=app && npm run build --workspace=api"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,36 @@
+# HoneyText API – deploy as a Web Service on Render
+# https://render.com/docs/blueprint-spec
+
+services:
+    - type: web
+      name: honey-text-api
+      runtime: node
+      rootDir: api
+
+      buildCommand: npm install && npm run build
+      startCommand: npm start
+
+      healthCheckPath: /health
+
+      # Only redeploy when api/ changes
+      buildFilter:
+          paths:
+              - api/**
+
+      envVars:
+          - key: NODE_VERSION
+            value: '20'
+          - key: SUPABASE_URL
+            sync: false
+          - key: SUPABASE_SERVICE_ROLE_KEY
+            sync: false
+          - key: TWILIO_ACCOUNT_SID
+            sync: false
+          - key: TWILIO_AUTH_TOKEN
+            sync: false
+          - key: TWILIO_PHONE_NUMBER
+            sync: false
+          - key: CRON_SECRET
+            sync: false
+          - key: CORS_ORIGIN
+            sync: false
