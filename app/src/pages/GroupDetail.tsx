@@ -308,7 +308,7 @@ export function GroupDetail() {
 														member.id,
 													)
 												}
-												className="button button-danger"
+												className="button button-small button-danger"
 											>
 												Remove
 											</button>

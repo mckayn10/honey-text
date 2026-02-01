@@ -109,6 +109,10 @@
   border: 1px solid #eee;
 }
 
+.member-item .button {
+  width: auto;
+}
+
 .invite-item .button {
   width: auto;
 }
