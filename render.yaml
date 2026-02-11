@@ -34,6 +34,3 @@ services:
             sync: false
           - key: CORS_ORIGIN
             sync: false
-          # Set to 'true' or '1' to send weekly questions via one-to-one SMS (toll-free friendly). Unset to use Group MMS (Conversation) once A2P 10DLC is done.
-          - key: SEND_WEEKLY_VIA_ONE_TO_ONE_SMS
-            sync: false

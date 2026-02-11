@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import './Auth.css';
+import { formatPhoneForInput, parsePhoneToDigits } from '../lib/phone';
+import { FormGroup, Button, inputStyle, inputFocusStyle } from '../components';
+import { theme } from '../theme';
 
 export function SignUp() {
 	const [email, setEmail] = useState('');
@@ -16,7 +18,6 @@ export function SignUp() {
 		e.preventDefault();
 		setLoading(true);
 		setError(null);
-
 		try {
 			const { data, error: signUpError } = await supabase.auth.signUp({
 				email,
@@ -28,13 +29,8 @@ export function SignUp() {
 					},
 				},
 			});
-
 			if (signUpError) throw signUpError;
-
-			if (data.user) {
-				// User profile is created by the database trigger (handle_new_user)
-				navigate('/app/groups');
-			}
+			if (data.user) navigate('/app/groups');
 		} catch (err: any) {
 			setError(err.message || 'Failed to sign up');
 		} finally {
@@ -43,44 +39,72 @@ export function SignUp() {
 	};
 
 	return (
-		<div className="auth-page">
-			<div className="auth-container">
-				<h1>Sign Up</h1>
+		<div
+			style={{
+				minHeight: '100vh',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'center',
+				backgroundColor: theme.bg,
+				padding: '2rem',
+			}}
+		>
+			<div
+				style={{
+					background: theme.bg,
+					padding: '2rem',
+					borderRadius: 8,
+					boxShadow: theme.shadow,
+					width: '100%',
+					maxWidth: 400,
+				}}
+			>
+				<h1 style={{ marginBottom: '1.5rem', color: theme.text, textAlign: 'center' }}>Sign Up</h1>
 				<form onSubmit={handleSubmit}>
-					{error && <div className="error">{error}</div>}
-					<div className="form-group">
-						<label htmlFor="displayName">Display Name</label>
+					{error && (
+						<div style={{ backgroundColor: theme.errorBg, color: theme.errorText, padding: '0.75rem', borderRadius: 4, marginBottom: '1rem' }}>
+							{error}
+						</div>
+					)}
+					<FormGroup label="Display Name" htmlFor="displayName" style={{ marginBottom: '1rem' }}>
 						<input
 							id="displayName"
 							type="text"
 							value={displayName}
 							onChange={(e) => setDisplayName(e.target.value)}
 							required
+							style={inputStyle}
+							onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+							onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: theme.borderLight, boxShadow: 'none' })}
 						/>
-					</div>
-					<div className="form-group">
-						<label htmlFor="phone">Phone Number</label>
+					</FormGroup>
+					<FormGroup label="Phone Number" htmlFor="phone" style={{ marginBottom: '1rem' }}>
 						<input
 							id="phone"
 							type="tel"
-							value={phone}
-							onChange={(e) => setPhone(e.target.value)}
+							value={formatPhoneForInput(phone)}
+							onChange={(e) => setPhone(parsePhoneToDigits(e.target.value))}
 							required
-							placeholder="+1234567890"
+							placeholder="(111) 111-1111"
+							maxLength={14}
+							style={inputStyle}
+							onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+							onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: theme.borderLight, boxShadow: 'none' })}
 						/>
-					</div>
-					<div className="form-group">
-						<label htmlFor="email">Email</label>
+					</FormGroup>
+					<FormGroup label="Email" htmlFor="email" style={{ marginBottom: '1rem' }}>
 						<input
 							id="email"
 							type="email"
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							required
+							style={inputStyle}
+							onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+							onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: theme.borderLight, boxShadow: 'none' })}
 						/>
-					</div>
-					<div className="form-group">
-						<label htmlFor="password">Password</label>
+					</FormGroup>
+					<FormGroup label="Password" htmlFor="password" style={{ marginBottom: '1rem' }}>
 						<input
 							id="password"
 							type="password"
@@ -88,18 +112,17 @@ export function SignUp() {
 							onChange={(e) => setPassword(e.target.value)}
 							required
 							minLength={6}
+							style={inputStyle}
+							onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+							onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: theme.borderLight, boxShadow: 'none' })}
 						/>
-					</div>
-					<button
-						type="submit"
-						className="button button-primary"
-						disabled={loading}
-					>
+					</FormGroup>
+					<Button type="submit" variant="primary" disabled={loading} style={{ width: '100%', padding: '0.75rem' }}>
 						{loading ? 'Signing up...' : 'Sign Up'}
-					</button>
+					</Button>
 				</form>
-				<p className="auth-footer">
-					Already have an account? <Link to="/login">Log in</Link>
+				<p style={{ marginTop: '1.5rem', textAlign: 'center', color: theme.textMuted }}>
+					Already have an account? <Link to="/login" style={{ color: theme.primary, textDecoration: 'none' }}>Log in</Link>
 				</p>
 			</div>
 		</div>

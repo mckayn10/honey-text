@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { publicApiRequest } from '../lib/api';
-import './InvitePage.css';
+import { formatPhoneForDisplay } from '../lib/phone';
+import { Button, Loading } from '../components';
+import { theme } from '../theme';
 
 interface InviteData {
 	invitee_name: string;
@@ -9,6 +11,25 @@ interface InviteData {
 	group_name: string;
 	creator_name?: string;
 }
+
+const pageStyle: React.CSSProperties = {
+	minHeight: '100vh',
+	display: 'flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+	backgroundColor: theme.bg,
+	padding: '2rem',
+};
+
+const containerStyle: React.CSSProperties = {
+	background: theme.bg,
+	padding: '3rem',
+	borderRadius: 8,
+	boxShadow: theme.shadow,
+	maxWidth: 500,
+	width: '100%',
+	textAlign: 'center',
+};
 
 export function InvitePage() {
 	const { token } = useParams<{ token: string }>();
@@ -19,9 +40,7 @@ export function InvitePage() {
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (token) {
-			loadInvite();
-		}
+		if (token) loadInvite();
 	}, [token]);
 
 	const loadInvite = async () => {
@@ -37,14 +56,10 @@ export function InvitePage() {
 
 	const handleAccept = async () => {
 		if (!token) return;
-
 		setAccepting(true);
 		setError(null);
-
 		try {
-			await publicApiRequest(`/invites/${token}/accept`, {
-				method: 'POST',
-			});
+			await publicApiRequest(`/invites/${token}/accept`, { method: 'POST' });
 			setAccepted(true);
 		} catch (err: any) {
 			setError(err.message || 'Failed to accept invite');
@@ -55,17 +70,21 @@ export function InvitePage() {
 
 	if (loading) {
 		return (
-			<div className="invite-page">
-				<div className="invite-container">Loading...</div>
+			<div style={pageStyle}>
+				<div style={{ ...containerStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+					<Loading />
+				</div>
 			</div>
 		);
 	}
 
 	if (error && !invite) {
 		return (
-			<div className="invite-page">
-				<div className="invite-container">
-					<div className="error">{error}</div>
+			<div style={pageStyle}>
+				<div style={containerStyle}>
+					<div style={{ backgroundColor: theme.errorBg, color: theme.errorText, padding: '0.75rem', borderRadius: 4, marginBottom: '1rem' }}>
+						{error}
+					</div>
 				</div>
 			</div>
 		);
@@ -73,13 +92,12 @@ export function InvitePage() {
 
 	if (accepted) {
 		return (
-			<div className="invite-page">
-				<div className="invite-container">
-					<div className="success">
-						<h1>You're in!</h1>
-						<p>
-							You've been added to {invite?.group_name}. You'll
-							start receiving weekly questions via text message.
+			<div style={pageStyle}>
+				<div style={containerStyle}>
+					<div>
+						<h1 style={{ color: theme.primary, marginBottom: '1rem' }}>You're in!</h1>
+						<p style={{ color: theme.text }}>
+							You've been added to {invite?.group_name}. You'll start receiving weekly questions via text message.
 						</p>
 					</div>
 				</div>
@@ -88,40 +106,44 @@ export function InvitePage() {
 	}
 
 	return (
-		<div className="invite-page">
-			<div className="invite-container">
-				<h1>You're Invited!</h1>
-				<div className="invite-details">
-					<p>
-						You've been invited to join{' '}
-						<strong>{invite?.group_name}</strong>
+		<div style={pageStyle}>
+			<div style={containerStyle}>
+				<h1 style={{ color: theme.primary, marginBottom: '1.5rem' }}>You're Invited!</h1>
+				<div style={{ textAlign: 'left', marginBottom: '2rem' }}>
+					<p style={{ marginBottom: '0.75rem', color: theme.text }}>
+						You've been invited to join <strong>{invite?.group_name}</strong>
 					</p>
 					{invite?.creator_name && (
-						<p className="creator">by {invite.creator_name}</p>
+						<p style={{ color: theme.textMuted, fontSize: '0.9rem' }}>by {invite.creator_name}</p>
 					)}
-					<div className="confirmation-box">
-						<p>
+					<div style={{ background: theme.bg, padding: '1rem', borderRadius: 4, margin: '1.5rem 0' }}>
+						<p style={{ marginBottom: '0.5rem' }}>
 							<strong>Name:</strong> {invite?.invitee_name}
 						</p>
-						<p>
-							<strong>Phone:</strong> {invite?.invitee_phone}
+						<p style={{ marginBottom: 0 }}>
+							<strong>Phone:</strong> {formatPhoneForDisplay(invite?.invitee_phone)}
 						</p>
 					</div>
-					<p className="confirm-text">
-						Please confirm this information is correct, then click
-						Accept.
+					<p style={{ marginTop: '1rem', color: theme.textMuted, fontSize: '0.9rem' }}>
+						Please confirm this information is correct, then click Accept.
 					</p>
 				</div>
 
-				{error && <div className="error">{error}</div>}
+				{error && (
+					<div style={{ backgroundColor: theme.errorBg, color: theme.errorText, padding: '0.75rem', borderRadius: 4, marginBottom: '1rem' }}>
+						{error}
+					</div>
+				)}
 
-				<button
+				<Button
+					type="button"
+					variant="primary"
 					onClick={handleAccept}
-					className="button button-primary button-large"
 					disabled={accepting}
+					style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }}
 				>
 					{accepting ? 'Accepting...' : 'Accept Invitation'}
-				</button>
+				</Button>
 			</div>
 		</div>
 	);

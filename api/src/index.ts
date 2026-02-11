@@ -13,8 +13,11 @@ config()
 const app = express()
 const PORT = process.env.PORT || 3001
 
+// CORS_ORIGIN can be a single origin or comma-separated (e.g. https://app.vercel.app,http://localhost:5173)
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000'
+const corsOrigins = corsOrigin.split(',').map((o) => o.trim()).filter(Boolean)
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: corsOrigins.length > 1 ? corsOrigins : corsOrigins[0] || 'http://localhost:3000',
   credentials: true,
 }))
 app.use(express.json())

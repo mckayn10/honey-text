@@ -8,6 +8,8 @@ import { GroupDetail } from './pages/GroupDetail';
 import { GroupSettings } from './pages/GroupSettings';
 import { InvitePage } from './pages/InvitePage';
 import { Profile } from './pages/Profile';
+import { AppLayout } from './components/AppLayout';
+import { Loading } from './components/Loading';
 import { useAuth } from './lib/useAuth';
 import { isSupabaseConfigured } from './lib/supabase';
 
@@ -15,7 +17,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 	const { user, loading } = useAuth();
 
 	if (loading) {
-		return <div>Loading...</div>;
+		return (
+			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+				<Loading fullHeight />
+			</div>
+		);
 	}
 
 	if (!user) {
@@ -62,45 +68,20 @@ function App() {
 					element={<Login />}
 				/>
 				<Route
-					path="/app/groups"
+					path="/app"
 					element={
 						<ProtectedRoute>
-							<Dashboard />
+							<AppLayout />
 						</ProtectedRoute>
 					}
-				/>
-				<Route
-					path="/app/profile"
-					element={
-						<ProtectedRoute>
-							<Profile />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/app/groups/new"
-					element={
-						<ProtectedRoute>
-							<NewGroup />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/app/groups/:id"
-					element={
-						<ProtectedRoute>
-							<GroupDetail />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/app/groups/:id/settings"
-					element={
-						<ProtectedRoute>
-							<GroupSettings />
-						</ProtectedRoute>
-					}
-				/>
+				>
+					<Route index element={<Navigate to="/app/groups" replace />} />
+					<Route path="groups" element={<Dashboard />} />
+					<Route path="profile" element={<Profile />} />
+					<Route path="groups/new" element={<NewGroup />} />
+					<Route path="groups/:id" element={<GroupDetail />} />
+					<Route path="groups/:id/settings" element={<GroupSettings />} />
+				</Route>
 				<Route
 					path="/invite/:token"
 					element={<InvitePage />}

@@ -9,20 +9,48 @@ const router = express.Router()
 // All routes require authentication
 router.use(authenticateUser)
 
-// GET /groups - List all groups for the current user
+// GET /groups - List all groups for the current user (with question_set name and member count)
 router.get('/', async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id
 
-    const { data, error } = await supabaseAdmin
+    const { data: groups, error } = await supabaseAdmin
       .from('groups')
-      .select('*')
+      .select(`
+        *,
+        question_sets(name)
+      `)
       .eq('owner_id', userId)
       .order('created_at', { ascending: false })
 
     if (error) throw error
 
-    res.json(data || [])
+    const groupIds = (groups || []).map((g: any) => g.id)
+    if (groupIds.length === 0) {
+      return res.json([])
+    }
+
+    const { data: members } = await supabaseAdmin
+      .from('group_members')
+      .select('group_id')
+      .in('group_id', groupIds)
+
+    const memberCountByGroup: Record<string, number> = {}
+    for (const g of groupIds) memberCountByGroup[g] = 0
+    for (const m of members || []) {
+      memberCountByGroup[m.group_id] = (memberCountByGroup[m.group_id] || 0) + 1
+    }
+
+    const result = (groups || []).map((g: any) => {
+      const { question_sets, ...group } = g
+      return {
+        ...group,
+        question_set_name: question_sets?.name ?? null,
+        member_count: memberCountByGroup[g.id] ?? 0,
+      }
+    })
+
+    res.json(result)
   } catch (error: any) {
     console.error('Error fetching groups:', error)
     res.status(500).json({ error: error.message || 'Failed to fetch groups' })
