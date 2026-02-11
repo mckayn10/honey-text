@@ -1,8 +1,8 @@
 import express from 'express'
 import { authenticateUser, AuthRequest } from '../middleware/auth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
-import { createConversation, addProjectedParticipant, addSmsParticipant, removeParticipant, deleteConversation } from '../lib/twilio.js'
-import { randomBytes } from 'crypto'
+import { createConversation, addProjectedParticipant, addSmsParticipant, removeParticipant, deleteConversation, sendSMS, toE164 } from '../lib/twilio.js'
+import { randomBytes, randomInt } from 'crypto'
 
 const router = express.Router()
 
@@ -270,10 +270,10 @@ router.post('/:id/invites', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Missing invitee_name or invitee_phone' })
     }
 
-    // Verify ownership
+    // Verify ownership and get group name for SMS
     const { data: group } = await supabaseAdmin
       .from('groups')
-      .select('id')
+      .select('id, name')
       .eq('id', groupId)
       .eq('owner_id', userId)
       .single()
@@ -282,16 +282,18 @@ router.post('/:id/invites', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Group not found' })
     }
 
-    // Generate unique token
     const token = randomBytes(32).toString('hex')
+    const acceptCode = String(randomInt(1000, 9999))
+    const normalizedPhone = toE164(invitee_phone)
 
     const { data, error } = await supabaseAdmin
       .from('group_invites')
       .insert({
         group_id: groupId,
         invitee_name,
-        invitee_phone,
+        invitee_phone: normalizedPhone,
         token,
+        accept_code: acceptCode,
         status: 'pending',
       })
       .select()
@@ -301,6 +303,14 @@ router.post('/:id/invites', async (req: AuthRequest, res) => {
 
     const origin = process.env.CORS_ORIGIN || 'http://localhost:3000'
     const inviteUrl = `${origin}/invite/${token}`
+    const smsBody = `You're invited to ${group.name} on HoneyText. Reply YES ${acceptCode} to join. Or open this link when you have internet: ${inviteUrl}`
+
+    try {
+      await sendSMS(normalizedPhone, smsBody)
+    } catch (err: any) {
+      console.error('Failed to send invite SMS:', err?.message || err)
+      // Invite is still created; they can use the link
+    }
 
     res.json({
       ...data,

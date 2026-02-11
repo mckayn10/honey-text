@@ -17,6 +17,7 @@ interface Invite {
 	invitee_name: string;
 	invitee_phone: string;
 	token: string;
+	accept_code?: string;
 	status: 'pending' | 'accepted';
 	created_at: string;
 }
@@ -92,7 +93,10 @@ export function GroupDetail() {
 			setInviteeName('');
 			setInviteePhone('');
 			loadGroup(); // Reload to show new invite
-			alert(`Invite link: ${data.inviteUrl}`);
+			const code = data.accept_code ?? '';
+			alert(
+				`Invite sent by SMS to ${data.invitee_phone}. They can reply "YES ${code}" to join (no internet needed), or open this link when they have internet: ${data.inviteUrl}`,
+			);
 		} catch (err: any) {
 			setError(err.message || 'Failed to create invite');
 		} finally {
