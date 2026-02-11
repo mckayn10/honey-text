@@ -1,4 +1,4 @@
-import { theme, containerWidths } from '../theme';
+import { containerWidths } from '../theme';
 
 type WidthKey = keyof typeof containerWidths;
 

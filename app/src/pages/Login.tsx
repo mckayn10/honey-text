@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Container, Button, FormGroup, inputStyle, inputFocusStyle } from '../components';
+import { Button, FormGroup, inputStyle, inputFocusStyle } from '../components';
 import { theme } from '../theme';
 
 export function Login() {
