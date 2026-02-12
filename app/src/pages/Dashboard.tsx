@@ -7,6 +7,7 @@ import { theme } from '../theme';
 interface Group {
 	id: string;
 	name: string;
+	status?: 'pending' | 'active';
 	question_set_id: string;
 	question_set_name?: string | null;
 	member_count?: number;
@@ -143,9 +144,26 @@ export function Dashboard() {
 										style={{
 											marginBottom: '0.5rem',
 											color: theme.text,
+											display: 'flex',
+											alignItems: 'center',
+											gap: '0.5rem',
 										}}
 									>
 										{group.name}
+										{group.status === 'pending' && (
+											<span
+												style={{
+													fontSize: '0.7rem',
+													fontWeight: 500,
+													color: theme.textMuted,
+													background: theme.bgSubtle,
+													padding: '0.15rem 0.5rem',
+													borderRadius: 4,
+												}}
+											>
+												Pending
+											</span>
+										)}
 									</h3>
 									<p
 										style={{

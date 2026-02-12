@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
-import { Container, Button, FormGroup, Card, inputStyle, inputFocusStyle } from '../components';
+import {
+	Container,
+	Button,
+	FormGroup,
+	Card,
+	inputStyle,
+	inputFocusStyle,
+} from '../components';
 import { theme } from '../theme';
 
 interface QuestionSet {
@@ -20,7 +27,9 @@ export function NewGroup() {
 	const [questionSetId, setQuestionSetId] = useState('');
 	const [scheduleDay, setScheduleDay] = useState(0);
 	const [scheduleTime, setScheduleTime] = useState('09:00');
-	const [scheduleTimezone, setScheduleTimezone] = useState('America/Los_Angeles');
+	const [scheduleTimezone, setScheduleTimezone] = useState(
+		'America/Los_Angeles',
+	);
 	const [questionSets, setQuestionSets] = useState<QuestionSet[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -67,23 +76,50 @@ export function NewGroup() {
 	};
 
 	return (
-		<div style={{ padding: '2rem 0' }}>
+		<div style={{ padding: '0rem 0' }}>
 			<Container maxWidth="narrow">
-				<h1 style={{ color: theme.text, marginBottom: '2rem' }}>Create New Group</h1>
-				<Card style={{ background: theme.bg, padding: '2rem', marginBottom: 0 }}>
+				<h1 style={{ color: theme.text, marginBottom: '2rem' }}>
+					Create New Group
+				</h1>
+				<Card
+					style={{
+						background: theme.bg,
+						padding: '2rem',
+						marginBottom: 0,
+					}}
+				>
 					<form onSubmit={handleSubmit}>
 						{loadError && (
-							<div style={{ backgroundColor: theme.errorBg, color: theme.errorText, padding: '0.75rem', borderRadius: 4, marginBottom: '1rem' }}>
+							<div
+								style={{
+									backgroundColor: theme.errorBg,
+									color: theme.errorText,
+									padding: '0.75rem',
+									borderRadius: 4,
+									marginBottom: '1rem',
+								}}
+							>
 								{loadError}
 							</div>
 						)}
 						{error && (
-							<div style={{ backgroundColor: theme.errorBg, color: theme.errorText, padding: '0.75rem', borderRadius: 4, marginBottom: '1rem' }}>
+							<div
+								style={{
+									backgroundColor: theme.errorBg,
+									color: theme.errorText,
+									padding: '0.75rem',
+									borderRadius: 4,
+									marginBottom: '1rem',
+								}}
+							>
 								{error}
 							</div>
 						)}
 
-						<FormGroup label="Group Name" htmlFor="name">
+						<FormGroup
+							label="Group Name"
+							htmlFor="name"
+						>
 							<input
 								id="name"
 								type="text"
@@ -92,30 +128,56 @@ export function NewGroup() {
 								required
 								placeholder="e.g., Family Check-in"
 								style={inputStyle}
-								onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
-								onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: theme.borderLight, boxShadow: 'none' })}
+								onFocus={(e) =>
+									Object.assign(
+										e.target.style,
+										inputFocusStyle,
+									)
+								}
+								onBlur={(e) =>
+									Object.assign(e.target.style, {
+										outline: 'none',
+										borderColor: theme.borderLight,
+										boxShadow: 'none',
+									})
+								}
 							/>
 						</FormGroup>
 
-						<FormGroup label="Question Set" htmlFor="questionSet">
+						<FormGroup
+							label="Question Set"
+							htmlFor="questionSet"
+						>
 							<select
 								id="questionSet"
 								value={questionSetId}
-								onChange={(e) => setQuestionSetId(e.target.value)}
+								onChange={(e) =>
+									setQuestionSetId(e.target.value)
+								}
 								required
 								style={selectStyle}
 							>
 								{questionSets.map((set) => (
-									<option key={set.id} value={set.id}>{set.name}</option>
+									<option
+										key={set.id}
+										value={set.id}
+									>
+										{set.name}
+									</option>
 								))}
 							</select>
 						</FormGroup>
 
-						<FormGroup label="Day of Week" htmlFor="scheduleDay">
+						<FormGroup
+							label="Day of Week"
+							htmlFor="scheduleDay"
+						>
 							<select
 								id="scheduleDay"
 								value={scheduleDay}
-								onChange={(e) => setScheduleDay(Number(e.target.value))}
+								onChange={(e) =>
+									setScheduleDay(Number(e.target.value))
+								}
 								required
 								style={selectStyle}
 							>
@@ -129,34 +191,56 @@ export function NewGroup() {
 							</select>
 						</FormGroup>
 
-						<FormGroup label="Time" htmlFor="scheduleTime">
+						<FormGroup
+							label="Time"
+							htmlFor="scheduleTime"
+						>
 							<input
 								id="scheduleTime"
 								type="time"
 								value={scheduleTime}
-								onChange={(e) => setScheduleTime(e.target.value)}
+								onChange={(e) =>
+									setScheduleTime(e.target.value)
+								}
 								required
 								style={inputStyle}
 							/>
 						</FormGroup>
 
-						<FormGroup label="Timezone" htmlFor="scheduleTimezone">
+						<FormGroup
+							label="Timezone"
+							htmlFor="scheduleTimezone"
+						>
 							<select
 								id="scheduleTimezone"
 								value={scheduleTimezone}
-								onChange={(e) => setScheduleTimezone(e.target.value)}
+								onChange={(e) =>
+									setScheduleTimezone(e.target.value)
+								}
 								required
 								style={selectStyle}
 							>
-								<option value="America/Los_Angeles">Pacific Time</option>
-								<option value="America/Denver">Mountain Time</option>
-								<option value="America/Chicago">Central Time</option>
-								<option value="America/New_York">Eastern Time</option>
+								<option value="America/Los_Angeles">
+									Pacific Time
+								</option>
+								<option value="America/Denver">
+									Mountain Time
+								</option>
+								<option value="America/Chicago">
+									Central Time
+								</option>
+								<option value="America/New_York">
+									Eastern Time
+								</option>
 							</select>
 						</FormGroup>
 
 						<div style={{ marginTop: '2rem' }}>
-							<Button type="submit" variant="primary" disabled={loading}>
+							<Button
+								type="submit"
+								variant="primary"
+								disabled={loading}
+							>
 								{loading ? 'Creating...' : 'Create Group'}
 							</Button>
 						</div>

@@ -1,6 +1,7 @@
 import express from 'express'
 import { supabaseAdmin } from '../lib/supabase.js'
-import { sendSMS, toE164, addSmsParticipant } from '../lib/twilio.js'
+import { sendSMS, toE164 } from '../lib/twilio.js'
+import { ensureGroupConversation } from '../lib/groupConversation.js'
 
 const router = express.Router()
 
@@ -75,40 +76,63 @@ router.post('/conversations/webhook', async (req, res) => {
       }
       const { data: group } = await supabaseAdmin
         .from('groups')
-        .select('id, name, conversation_sid')
+        .select('id, name, owner_id')
         .eq('id', invite.group_id)
         .single()
-      let participantSid: string | null = null
-      if (group?.conversation_sid) {
-        try {
-          const participant = await addSmsParticipant(group.conversation_sid, fromE164)
-          participantSid = participant.sid
-        } catch (err) {
-          console.error('[webhook] addSmsParticipant failed:', err)
-        }
+      let ownerPhone: string | null = null
+      if (group?.owner_id) {
+        const { data: owner } = await supabaseAdmin
+          .from('users')
+          .select('phone')
+          .eq('id', group.owner_id)
+          .single()
+        ownerPhone = owner?.phone ? toE164(owner.phone) : null
       }
-      const { error: memberError } = await supabaseAdmin
-        .from('group_members')
-        .insert({
+      const isOwnerSelfInvite = ownerPhone === fromE164
+
+      if (isOwnerSelfInvite) {
+        // Owner verification: activate group, add owner to group_members (no Twilio yet)
+        await supabaseAdmin
+          .from('groups')
+          .update({ status: 'active' })
+          .eq('id', invite.group_id)
+        await supabaseAdmin.from('group_members').insert({
           group_id: invite.group_id,
           name: invite.invitee_name,
           phone: fromE164,
           invite_id: invite.id,
           confirmed_at: new Date().toISOString(),
-          participant_sid: participantSid,
+          is_owner: true,
+        })
+        try {
+          await sendSMS(fromE164, `Your group "${group?.name ?? 'Group'}" is now active! Add members and start receiving weekly questions.`)
+        } catch (err) {
+          console.error('[webhook] owner confirm SMS failed:', err)
+        }
+        console.log('[webhook] owner verified group via SMS', { invite_id: invite.id, group_id: invite.group_id })
+      } else {
+        await supabaseAdmin.from('group_members').insert({
+          group_id: invite.group_id,
+          name: invite.invitee_name,
+          phone: fromE164,
+          invite_id: invite.id,
+          confirmed_at: new Date().toISOString(),
           is_owner: false,
         })
-      if (memberError) {
-        console.error('[webhook] invite accept insert member failed:', memberError)
-        return res.status(200).send('ok')
+        await supabaseAdmin.from('groups').update({ status: 'active' }).eq('id', invite.group_id)
+        try {
+          await ensureGroupConversation(invite.group_id)
+        } catch (err) {
+          console.error('[webhook] ensureGroupConversation failed:', err)
+        }
+        const groupName = group?.name ?? 'the group'
+        try {
+          await sendSMS(fromE164, `You're in! You've joined ${groupName}. You'll start receiving weekly questions via text message.`)
+        } catch (err) {
+          console.error('[webhook] confirm SMS failed:', err)
+        }
+        console.log('[webhook] invite accepted via SMS', { invite_id: invite.id, group_id: invite.group_id, from: fromE164 })
       }
-      const groupName = group?.name ?? 'the group'
-      try {
-        await sendSMS(fromE164, `You're in! You've joined ${groupName}. You'll start receiving weekly questions via text message.`)
-      } catch (err) {
-        console.error('[webhook] confirm SMS failed:', err)
-      }
-      console.log('[webhook] invite accepted via SMS', { invite_id: invite.id, group_id: invite.group_id, from: fromE164 })
     }
 
     res.status(200).send('ok')

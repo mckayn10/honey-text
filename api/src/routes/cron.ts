@@ -21,6 +21,7 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
 
     for (const group of groups || []) {
       try {
+        if (group.status !== 'active') continue
         // Convert current time to group's timezone
         const groupTime = now.setZone(group.schedule_timezone)
         const currentDay = groupTime.weekday === 7 ? 0 : groupTime.weekday // Convert Sunday from 7 to 0

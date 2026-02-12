@@ -63,7 +63,7 @@ export function AppLayout() {
 								alignItems: 'center',
 							}}
 						>
-							<ButtonLink to="/app/profile">Profile</ButtonLink>
+							<ButtonLink to="/app/profile" style={{ textDecoration: 'none' }}>Profile</ButtonLink>
 							<button
 								type="button"
 								onClick={handleLogout}
@@ -72,7 +72,7 @@ export function AppLayout() {
 									border: 'none',
 									color: theme.textMuted,
 									cursor: 'pointer',
-									textDecoration: 'underline',
+									textDecoration: 'none',
 									fontSize: '1rem',
 									fontFamily: 'inherit',
 								}}

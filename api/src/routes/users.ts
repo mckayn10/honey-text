@@ -2,6 +2,7 @@ import express from 'express'
 import { authenticateUser, AuthRequest } from '../middleware/auth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
 import { addSmsParticipant } from '../lib/twilio.js'
+import { ensureGroupConversation } from '../lib/groupConversation.js'
 
 const router = express.Router()
 
@@ -89,14 +90,21 @@ router.patch('/me', async (req: AuthRequest, res) => {
 
         // Add owner as SMS participant to conversations (if missing)
         for (const group of groups || []) {
-          if (!group.conversation_sid) continue
           if (existingParticipantGroups.has(group.id)) continue
-          const participant = await addSmsParticipant(group.conversation_sid, updatedUser.phone)
-          await supabaseAdmin
-            .from('group_members')
-            .update({ participant_sid: participant.sid, is_owner: true })
-            .eq('group_id', group.id)
-            .eq('phone', updatedUser.phone)
+          if (group.conversation_sid) {
+            const participant = await addSmsParticipant(group.conversation_sid, updatedUser.phone)
+            await supabaseAdmin
+              .from('group_members')
+              .update({ participant_sid: participant.sid, is_owner: true })
+              .eq('group_id', group.id)
+              .eq('phone', updatedUser.phone)
+          } else {
+            try {
+              await ensureGroupConversation(group.id)
+            } catch (err) {
+              console.error('[users] ensureGroupConversation failed for group', group.id, err)
+            }
+          }
         }
       }
     }

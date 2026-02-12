@@ -1,7 +1,7 @@
 import express from 'express'
 import { authenticateUser, AuthRequest } from '../middleware/auth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
-import { createConversation, addProjectedParticipant, addSmsParticipant, removeParticipant, deleteConversation, sendSMS, toE164 } from '../lib/twilio.js'
+import { addSmsParticipant, removeParticipant, deleteConversation, sendSMS, toE164 } from '../lib/twilio.js'
 import { randomBytes, randomInt } from 'crypto'
 
 const router = express.Router()
@@ -57,7 +57,7 @@ router.get('/', async (req: AuthRequest, res) => {
   }
 })
 
-// POST /groups - Create a new group
+// POST /groups - Create a new group (pending until owner replies YES to SMS)
 router.post('/', async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id
@@ -65,6 +65,16 @@ router.post('/', async (req: AuthRequest, res) => {
 
     if (!name || question_set_id === undefined || schedule_day === undefined || !schedule_time || !schedule_timezone) {
       return res.status(400).json({ error: 'Missing required fields' })
+    }
+
+    const { data: userProfile } = await supabaseAdmin
+      .from('users')
+      .select('display_name, email, phone')
+      .eq('id', userId)
+      .single()
+
+    if (!userProfile?.phone) {
+      return res.status(400).json({ error: 'Add your phone number in Profile before creating a group' })
     }
 
     const { data, error } = await supabaseAdmin
@@ -76,6 +86,7 @@ router.post('/', async (req: AuthRequest, res) => {
         schedule_day,
         schedule_time,
         schedule_timezone,
+        status: 'pending',
       })
       .select()
       .single()
@@ -90,63 +101,32 @@ router.post('/', async (req: AuthRequest, res) => {
         last_question_index: 0,
       })
 
-    // Create Twilio Conversation and projected participant for Honey Messages
-    const conversation = await createConversation(data.name)
+    // Self-invite: owner must reply YES to activate the group
+    const token = randomBytes(32).toString('hex')
+    const acceptCode = String(randomInt(1000, 9999))
+    const ownerPhone = toE164(userProfile.phone)
+
+    await supabaseAdmin.from('group_invites').insert({
+      group_id: data.id,
+      invitee_name: userProfile.display_name || userProfile.email || 'Group Owner',
+      invitee_phone: ownerPhone,
+      token,
+      accept_code: acceptCode,
+      status: 'pending',
+    })
+
+    const smsBody = `Reply YES ${acceptCode} to create your group "${name}" on HoneyText.`
     try {
-      await addProjectedParticipant(conversation.sid, `honeytext-${data.id}`)
-    } catch (twilioErr: any) {
-      if (twilioErr?.code === 50407) {
-        throw new Error(
-          'Invalid Twilio number for Group MMS. Set TWILIO_PHONE_NUMBER in api/.env to a US/Canada long code you own in Twilio (E.164, e.g. +15551234567).'
-        )
-      }
-      throw twilioErr
-    }
-
-    await supabaseAdmin
-      .from('groups')
-      .update({ conversation_sid: conversation.sid })
-      .eq('id', data.id)
-
-    // Add group owner as a member if phone exists
-    const { data: userProfile } = await supabaseAdmin
-      .from('users')
-      .select('display_name, email, phone')
-      .eq('id', userId)
-      .single()
-
-    if (userProfile?.phone) {
-      const participant = await addSmsParticipant(conversation.sid, userProfile.phone)
-      const { data: existingMember } = await supabaseAdmin
-        .from('group_members')
-        .select('id')
-        .eq('group_id', data.id)
-        .eq('phone', userProfile.phone)
-        .maybeSingle()
-
-      if (!existingMember) {
-        await supabaseAdmin
-          .from('group_members')
-          .insert({
-            group_id: data.id,
-            name: userProfile.display_name || userProfile.email || 'Group Owner',
-            phone: userProfile.phone,
-            confirmed_at: new Date().toISOString(),
-            participant_sid: participant.sid,
-            is_owner: true,
-          })
-      } else {
-        await supabaseAdmin
-          .from('group_members')
-          .update({ participant_sid: participant.sid, is_owner: true })
-          .eq('id', existingMember.id)
-      }
+      await sendSMS(ownerPhone, smsBody)
+    } catch (err: any) {
+      console.error('Failed to send activation SMS:', err?.message || err)
+      // Group and invite exist; they can use the web link or we could add "resend" later
     }
 
     res.json({
       ...data,
-      needs_phone: !userProfile?.phone,
-      conversation_sid: conversation.sid,
+      status: 'pending',
+      conversation_sid: null,
     })
   } catch (error: any) {
     console.error('Error creating group:', error)

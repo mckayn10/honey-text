@@ -8,6 +8,8 @@ import { theme } from '../theme';
 interface Group {
 	id: string;
 	name: string;
+	status?: 'pending' | 'active';
+	conversation_sid?: string | null;
 	question_set_id: string;
 	schedule_day: number;
 	schedule_time: string;
@@ -171,6 +173,20 @@ export function GroupDetail() {
 					{group.name}
 				</h1>
 
+				{group.status === 'active' && !group.conversation_sid && (
+					<Card
+						style={{
+							background: theme.bgSubtle,
+							borderColor: theme.border,
+							marginBottom: '1.5rem',
+						}}
+					>
+						<p style={{ margin: 0, color: theme.textMuted }}>
+							This group has the same members as another group. Invite someone new to start receiving weekly questions via text.
+						</p>
+					</Card>
+				)}
+
 				<Card>
 					<p style={{ margin: 0 }}>
 						<strong>Schedule:</strong> {getDayName(group.schedule_day)} at {formatTime12(group.schedule_time)} ({group.schedule_timezone})
@@ -256,6 +272,11 @@ export function GroupDetail() {
 								<div key={invite.id} style={listItemStyle}>
 									<div>
 										<strong>{invite.invitee_name}</strong> - {formatPhoneForDisplay(invite.invitee_phone)}
+										{invite.accept_code && (
+											<span style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.9rem', color: theme.textMuted }}>
+												Reply YES {invite.accept_code} to accept
+											</span>
+										)}
 									</div>
 									<div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
 										<Button type="button" size="small" onClick={() => copyInviteLink(invite.token)}>
@@ -291,17 +312,10 @@ function formatTime12(time: string): string {
 
 function getMembersWithOwner(members: Member[], userProfile: UserProfile | null): MemberWithOwner[] {
 	if (!userProfile) return members.map((m) => ({ ...m, isOwner: false }));
-	const ownerName = userProfile.display_name || userProfile.email || 'You';
-	const ownerPhone = userProfile.phone || '';
-	const hasOwnerPhone = ownerPhone.length > 0;
-	let hasOwner = false;
-	const enriched = members.map((m) => {
-		const isOwner = hasOwnerPhone && m.phone === ownerPhone;
-		if (isOwner) hasOwner = true;
+	const ownerDigits = parsePhoneToDigits(userProfile.phone || '');
+	const hasOwnerPhone = ownerDigits.length > 0;
+	return members.map((m) => {
+		const isOwner = hasOwnerPhone && m.phone && parsePhoneToDigits(m.phone) === ownerDigits;
 		return { ...m, isOwner: Boolean(isOwner) };
 	});
-	if (!hasOwner) {
-		return [{ id: 'owner', name: ownerName, phone: ownerPhone, confirmed_at: '', isOwner: true }, ...enriched];
-	}
-	return enriched;
 }

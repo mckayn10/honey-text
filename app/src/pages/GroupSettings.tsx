@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
-import { Container, Button, FormGroup, Card, Loading, inputStyle } from '../components';
+import {
+	Container,
+	Button,
+	FormGroup,
+	Card,
+	Loading,
+	inputStyle,
+} from '../components';
 import { theme } from '../theme';
 
 interface Group {
@@ -20,7 +27,9 @@ export function GroupSettings() {
 	const [group, setGroup] = useState<Group | null>(null);
 	const [scheduleDay, setScheduleDay] = useState(0);
 	const [scheduleTime, setScheduleTime] = useState('09:00');
-	const [scheduleTimezone, setScheduleTimezone] = useState('America/Los_Angeles');
+	const [scheduleTimezone, setScheduleTimezone] = useState(
+		'America/Los_Angeles',
+	);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [deleting, setDeleting] = useState(false);
@@ -64,7 +73,14 @@ export function GroupSettings() {
 				}),
 			});
 			setGroup((prev) =>
-				prev ? { ...prev, schedule_day: scheduleDay, schedule_time: scheduleTime, schedule_timezone: scheduleTimezone } : null,
+				prev
+					? {
+							...prev,
+							schedule_day: scheduleDay,
+							schedule_time: scheduleTime,
+							schedule_timezone: scheduleTimezone,
+						}
+					: null,
 			);
 		} catch (err: any) {
 			setError(err.message || 'Failed to update schedule');
@@ -75,7 +91,8 @@ export function GroupSettings() {
 
 	const handleDeleteGroup = async () => {
 		if (!group) return;
-		if (!window.confirm(`Delete "${group.name}"? This cannot be undone.`)) return;
+		if (!window.confirm(`Delete "${group.name}"? This cannot be undone.`))
+			return;
 		setDeleting(true);
 		setError(null);
 		try {
@@ -88,11 +105,16 @@ export function GroupSettings() {
 		}
 	};
 
-	if (loading) return <div style={{ padding: '2.5rem 0 3rem' }}><Loading fullHeight /></div>;
+	if (loading)
+		return (
+			<div style={{ padding: '2.5rem 0 3rem' }}>
+				<Loading fullHeight />
+			</div>
+		);
 	if (!group) return null;
 
 	return (
-		<div style={{ padding: '2.5rem 0 3rem' }}>
+		<div style={{ padding: '0rem 0 3rem' }}>
 			<Container maxWidth="narrow">
 				<div style={{ marginBottom: '1rem' }}>
 					<Link
@@ -111,26 +133,62 @@ export function GroupSettings() {
 						← Back to Group
 					</Link>
 				</div>
-				<h1 style={{ color: theme.text, marginBottom: '1.5rem', fontSize: '1.75rem', letterSpacing: '-0.02em' }}>
+				<h1
+					style={{
+						color: theme.text,
+						marginBottom: '1.5rem',
+						fontSize: '1.75rem',
+						letterSpacing: '-0.02em',
+					}}
+				>
 					Settings: {group.name}
 				</h1>
 
 				<Card>
-					<h2 style={{ color: theme.text, fontSize: '1.15rem', marginBottom: '0.5rem' }}>Question time</h2>
-					<p style={{ color: theme.textMuted, fontSize: '0.95rem', marginBottom: '1.25rem', lineHeight: 1.45 }}>
-						When the weekly question is sent to this group (in the timezone below).
+					<h2
+						style={{
+							color: theme.text,
+							fontSize: '1.15rem',
+							marginBottom: '0.5rem',
+						}}
+					>
+						Question time
+					</h2>
+					<p
+						style={{
+							color: theme.textMuted,
+							fontSize: '0.95rem',
+							marginBottom: '1.25rem',
+							lineHeight: 1.45,
+						}}
+					>
+						When the weekly question is sent to this group (in the
+						timezone below).
 					</p>
 					<form onSubmit={handleSaveSchedule}>
 						{error && (
-							<div style={{ backgroundColor: theme.errorBg, color: theme.errorText, padding: '0.75rem', borderRadius: 4, marginBottom: '1rem' }}>
+							<div
+								style={{
+									backgroundColor: theme.errorBg,
+									color: theme.errorText,
+									padding: '0.75rem',
+									borderRadius: 4,
+									marginBottom: '1rem',
+								}}
+							>
 								{error}
 							</div>
 						)}
-						<FormGroup label="Day of week" htmlFor="scheduleDay">
+						<FormGroup
+							label="Day of week"
+							htmlFor="scheduleDay"
+						>
 							<select
 								id="scheduleDay"
 								value={scheduleDay}
-								onChange={(e) => setScheduleDay(Number(e.target.value))}
+								onChange={(e) =>
+									setScheduleDay(Number(e.target.value))
+								}
 								required
 								style={selectStyle}
 							>
@@ -143,44 +201,93 @@ export function GroupSettings() {
 								<option value={6}>Saturday</option>
 							</select>
 						</FormGroup>
-						<FormGroup label="Time" htmlFor="scheduleTime">
+						<FormGroup
+							label="Time"
+							htmlFor="scheduleTime"
+						>
 							<input
 								id="scheduleTime"
 								type="time"
 								value={scheduleTime}
-								onChange={(e) => setScheduleTime(e.target.value)}
+								onChange={(e) =>
+									setScheduleTime(e.target.value)
+								}
 								required
 								style={inputStyle}
 							/>
 						</FormGroup>
-						<FormGroup label="Timezone" htmlFor="scheduleTimezone">
+						<FormGroup
+							label="Timezone"
+							htmlFor="scheduleTimezone"
+						>
 							<select
 								id="scheduleTimezone"
 								value={scheduleTimezone}
-								onChange={(e) => setScheduleTimezone(e.target.value)}
+								onChange={(e) =>
+									setScheduleTimezone(e.target.value)
+								}
 								required
 								style={selectStyle}
 							>
-								<option value="America/Los_Angeles">Pacific Time</option>
-								<option value="America/Denver">Mountain Time</option>
-								<option value="America/Chicago">Central Time</option>
-								<option value="America/New_York">Eastern Time</option>
+								<option value="America/Los_Angeles">
+									Pacific Time
+								</option>
+								<option value="America/Denver">
+									Mountain Time
+								</option>
+								<option value="America/Chicago">
+									Central Time
+								</option>
+								<option value="America/New_York">
+									Eastern Time
+								</option>
 							</select>
 						</FormGroup>
 						<div style={{ marginTop: '2rem' }}>
-							<Button type="submit" variant="primary" disabled={saving}>
+							<Button
+								type="submit"
+								variant="primary"
+								disabled={saving}
+							>
 								{saving ? 'Saving...' : 'Save schedule'}
 							</Button>
 						</div>
 					</form>
 				</Card>
 
-				<Card style={{ borderColor: theme.dangerBorder, background: '#fffbfb' }}>
-					<h2 style={{ color: theme.text, fontSize: '1.15rem', marginBottom: '0.5rem' }}>Delete group</h2>
-					<p style={{ color: theme.textMuted, fontSize: '0.95rem', marginBottom: '1.25rem', lineHeight: 1.45 }}>
-						Permanently delete this group and its conversation. Invites and member list will be removed. This cannot be undone.
+				<Card
+					style={{
+						borderColor: theme.dangerBorder,
+						background: '#fffbfb',
+					}}
+				>
+					<h2
+						style={{
+							color: theme.text,
+							fontSize: '1.15rem',
+							marginBottom: '0.5rem',
+						}}
+					>
+						Delete group
+					</h2>
+					<p
+						style={{
+							color: theme.textMuted,
+							fontSize: '0.95rem',
+							marginBottom: '1.25rem',
+							lineHeight: 1.45,
+						}}
+					>
+						Permanently delete this group and its conversation.
+						Invites and member list will be removed. This cannot be
+						undone.
 					</p>
-					<Button type="button" variant="danger" disabled={deleting} onClick={handleDeleteGroup}>
+					<Button
+						type="button"
+						variant="danger"
+						disabled={deleting}
+						onClick={handleDeleteGroup}
+					>
 						{deleting ? 'Deleting...' : 'Delete group'}
 					</Button>
 				</Card>
