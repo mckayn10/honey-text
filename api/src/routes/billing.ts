@@ -104,16 +104,86 @@ router.post('/create-subscription', authenticateUser, async (req: AuthRequest, r
       items: [{ price: price_id }],
       payment_behavior: 'default_incomplete',
       payment_settings: { save_default_payment_method: 'on_subscription' },
-      expand: ['latest_invoice.payment_intent'],
+      expand: ['latest_invoice', 'latest_invoice.payment_intent', 'latest_invoice.confirmation_secret'],
       metadata: { supabase_user_id: userId },
     })
 
-    const invoice = subscription.latest_invoice as Stripe.Invoice & { payment_intent?: Stripe.PaymentIntent }
-    const paymentIntent = invoice?.payment_intent
-    const client_secret = paymentIntent?.client_secret ?? null
+    let client_secret: string | null = null
+    const rawInvoice = subscription.latest_invoice
+    const invoiceId = typeof rawInvoice === 'string' ? rawInvoice : (rawInvoice as Stripe.Invoice)?.id
+
+    // Prefer confirmation_secret (Stripe's field for Payment Element; has client_secret even when payment_intent is null on invoice)
+    const getClientSecretFromInvoice = (inv: Stripe.Invoice): string | null => {
+      const cs = (inv as Stripe.Invoice & { confirmation_secret?: { client_secret: string } }).confirmation_secret
+      if (typeof cs === 'object' && cs?.client_secret) return cs.client_secret
+      const pi = (inv as Stripe.Invoice & { payment_intent?: Stripe.PaymentIntent | string }).payment_intent
+      if (typeof pi === 'object' && pi?.client_secret) return pi.client_secret
+      if (typeof pi === 'string' && pi) return null // caller can retrieve by id
+      return null
+    }
+
+    if (typeof rawInvoice === 'string') {
+      const invoice = await stripe.invoices.retrieve(rawInvoice, {
+        expand: ['payment_intent', 'confirmation_secret'],
+      }) as Stripe.Invoice & { payment_intent?: Stripe.PaymentIntent; confirmation_secret?: { client_secret: string } }
+      client_secret = getClientSecretFromInvoice(invoice)
+      if (!client_secret && typeof invoice.payment_intent === 'string' && invoice.payment_intent) {
+        const intent = await stripe.paymentIntents.retrieve(invoice.payment_intent)
+        client_secret = intent.client_secret
+      }
+    } else if (rawInvoice && typeof rawInvoice === 'object') {
+      const inv = rawInvoice as Stripe.Invoice & { payment_intent?: Stripe.PaymentIntent | string; confirmation_secret?: { client_secret: string } }
+      client_secret = getClientSecretFromInvoice(inv)
+      if (!client_secret && typeof inv.payment_intent === 'string' && inv.payment_intent) {
+        const intent = await stripe.paymentIntents.retrieve(inv.payment_intent)
+        client_secret = intent.client_secret
+      }
+      if (!client_secret && inv.id) {
+        try {
+          const refetched = await stripe.invoices.retrieve(inv.id, {
+            expand: ['payment_intent', 'confirmation_secret'],
+          }) as Stripe.Invoice & { payment_intent?: Stripe.PaymentIntent | string; confirmation_secret?: { client_secret: string } }
+          client_secret = getClientSecretFromInvoice(refetched)
+          if (!client_secret && typeof refetched.payment_intent === 'string' && refetched.payment_intent) {
+            const intent = await stripe.paymentIntents.retrieve(refetched.payment_intent)
+            client_secret = intent.client_secret
+          }
+        } catch (e) {
+          console.error('[billing] Refetch invoice with expand failed:', e)
+        }
+      }
+    }
 
     if (!client_secret) {
-      return res.status(500).json({ error: 'Could not create payment intent' })
+      // $0 first invoice (e.g. free trial): no PaymentIntent, subscription may already be active/trialing
+      const subStatus = subscription.status
+      let invoiceAmountDue = 0
+      let invStatus: string | undefined = undefined
+      if (invoiceId) {
+        try {
+          const inv = await stripe.invoices.retrieve(invoiceId)
+          invoiceAmountDue = inv.amount_due ?? 0
+          invStatus = inv.status ?? undefined
+          console.error('[billing] Fallback invoice fetch:', { invoice_id: invoiceId, status: inv.status, amount_due: inv.amount_due, collection_method: inv.collection_method })
+        } catch (e) {
+          console.error('[billing] Fallback invoice fetch failed:', e)
+        }
+      }
+      if (subStatus === 'trialing' || subStatus === 'active' || invoiceAmountDue === 0) {
+        const priceId = subscription.items?.data?.[0]?.price?.id
+        const tier = priceId ? getTierByPriceId(priceId) : null
+        if (tier) {
+          await supabaseAdmin
+            .from('users')
+            .update({ stripe_subscription_id: subscription.id, subscription_tier: tier })
+            .eq('id', userId)
+        }
+        return res.json({ subscription_id: subscription.id, skip_payment: true })
+      }
+      console.error('[billing] No payment intent client_secret. Subscription:', subscription.id, 'status:', subStatus, 'invoice:', invoiceId, 'invoice_status:', invStatus, 'amount_due:', invoiceAmountDue)
+      return res.status(500).json({
+        error: 'Could not create payment intent. In Stripe, this price must charge immediately: remove any free trial, use Recurring with amount > 0, and use the Price ID (not Product ID) in your env.',
+      })
     }
 
     res.json({ client_secret, subscription_id: subscription.id })

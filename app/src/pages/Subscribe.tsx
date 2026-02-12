@@ -143,6 +143,10 @@ export function Subscribe() {
 				method: 'POST',
 				body: JSON.stringify({ price_id: plan.priceId }),
 			});
+			if (data.skip_payment) {
+				handleSuccess();
+				return;
+			}
 			setClientSecret(data.client_secret);
 			setSubscriptionId(data.subscription_id);
 		} catch (err: any) {

@@ -14,13 +14,14 @@ export interface TierConfig {
 }
 
 const TIER_CONFIG_RAW: Omit<TierConfig, 'priceId'>[] = [
-  { tier: 'starter', maxGroups: 1, maxMembersPerGroup: 5, label: 'Starter', priceDisplay: '$5/mo' },
-  { tier: 'pro', maxGroups: 5, maxMembersPerGroup: 10, label: 'Pro', priceDisplay: '$12/mo' },
-  { tier: 'team', maxGroups: 15, maxMembersPerGroup: 15, label: 'Team', priceDisplay: '$25/mo' },
+  { tier: 'basic', maxGroups: 1, maxMembersPerGroup: 5, label: 'Basic', priceDisplay: '$5/month' },
+  { tier: 'pro', maxGroups: 3, maxMembersPerGroup: 5, label: 'Pro', priceDisplay: '$10/month' },
+  { tier: 'premium', maxGroups: 10, maxMembersPerGroup: 10, label: 'Premium', priceDisplay: '$20/month' },
 ]
 
+// Set each in api/.env; tiers with no price ID are omitted from GET /billing/plans
 const PRICE_IDS: Record<string, string> = {
-  starter: process.env.STRIPE_BASIC_PRICE_ID || '',
+  basic: process.env.STRIPE_BASIC_PRICE_ID || '',
   pro: process.env.STRIPE_PRO_PRICE_ID || '',
   premium: process.env.STRIPE_PREMIUM_PRICE_ID || '',
 }
