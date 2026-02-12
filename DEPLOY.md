@@ -96,6 +96,16 @@ Restart the dev server or redeploy the frontend so it uses this URL.
 
 ---
 
+## 7. SPA routing (fix 404 on refresh)
+
+The app uses client-side routing (e.g. `/app/groups`, `/app/subscribe`). If the frontend host doesn’t serve `index.html` for those paths, **refreshing** or opening a deep link returns **404** and can make it seem like you’re logged out when you go back to the main URL.
+
+- **Vercel:** The repo includes `app/vercel.json` with a rewrite so all routes serve `index.html`. Deploy from the `app` directory (or set Root Directory to `app`) so Vercel uses it.
+- **Netlify:** The repo includes `app/public/_redirects` (`/* /index.html 200`). It’s copied into the build output; no extra config needed if you build from `app`.
+- **Other hosts (Render static, S3 + CloudFront, etc.):** Configure the server so that for any path that isn’t a real file, it serves `index.html` with status 200 (SPA fallback). Without this, refresh on `/app/groups` will 404.
+
+---
+
 ## Still not receiving the text?
 
 Use this checklist to narrow it down.
