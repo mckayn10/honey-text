@@ -35,9 +35,11 @@ async function getGroupMemberPhones(groupId: string): Promise<Set<string>> {
 /**
  * Check if another group (with a conversation) has the exact same member set.
  * Avoids Twilio 50438 by not creating until the set is unique.
+ * Single-participant (owner-only) groups are always allowed so each can have its own thread.
  */
 async function hasDuplicateMemberSet(groupId: string, memberPhones: Set<string>): Promise<boolean> {
   if (memberPhones.size === 0) return false
+  if (memberPhones.size === 1) return false // owner-only: each group gets its own Conversation
 
   const { data: otherGroups } = await supabaseAdmin
     .from('groups')

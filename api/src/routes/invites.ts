@@ -122,6 +122,11 @@ router.post('/:token/accept', async (req, res) => {
         confirmed_at: new Date().toISOString(),
         is_owner: true,
       })
+      try {
+        await ensureGroupConversation(invite.group_id)
+      } catch (err) {
+        console.error('[invites] ensureGroupConversation (owner-only) failed:', err)
+      }
     } else {
       await supabaseAdmin.from('group_members').insert({
         group_id: invite.group_id,

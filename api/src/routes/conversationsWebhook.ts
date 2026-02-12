@@ -104,7 +104,7 @@ router.post('/conversations/webhook', async (req, res) => {
       const isOwnerSelfInvite = ownerPhone === fromE164
 
       if (isOwnerSelfInvite) {
-        // Owner verification: activate group, add owner to group_members (no Twilio yet)
+        // Owner verification: activate group, add owner to group_members, create Conversation so owner gets weekly questions
         await supabaseAdmin
           .from('groups')
           .update({ status: 'active' })
@@ -117,6 +117,11 @@ router.post('/conversations/webhook', async (req, res) => {
           confirmed_at: new Date().toISOString(),
           is_owner: true,
         })
+        try {
+          await ensureGroupConversation(invite.group_id)
+        } catch (err) {
+          console.error('[webhook] ensureGroupConversation (owner-only) failed:', err)
+        }
         try {
           await sendSMS(fromE164, `Your group "${group?.name ?? 'Group'}" is now active! Add members and start receiving weekly questions.`)
         } catch (err) {
