@@ -2,6 +2,7 @@ import express from 'express'
 import { supabaseAdmin } from '../lib/supabase.js'
 import { sendSMS, toE164 } from '../lib/twilio.js'
 import { ensureGroupConversation } from '../lib/groupConversation.js'
+import { checkCanAddMemberToGroup } from '../lib/subscriptionLimits.js'
 
 const router = express.Router()
 
@@ -66,6 +67,23 @@ router.post('/conversations/webhook', async (req, res) => {
     })
     if (matchingInvite) {
       const invite = matchingInvite
+      const { data: group } = await supabaseAdmin
+        .from('groups')
+        .select('id, name, owner_id')
+        .eq('id', invite.group_id)
+        .single()
+      if (!group) {
+        return res.status(200).send('ok')
+      }
+      const canAdd = await checkCanAddMemberToGroup(group.owner_id, invite.group_id)
+      if (!canAdd) {
+        try {
+          await sendSMS(fromE164, 'This group has reached its member limit. The owner can upgrade their plan to add you.')
+        } catch (err) {
+          console.error('[webhook] member limit SMS failed:', err)
+        }
+        return res.status(200).send('ok')
+      }
       const { error: updateError } = await supabaseAdmin
         .from('group_invites')
         .update({ status: 'accepted' })
@@ -74,11 +92,6 @@ router.post('/conversations/webhook', async (req, res) => {
         console.error('[webhook] invite accept update failed:', updateError)
         return res.status(200).send('ok')
       }
-      const { data: group } = await supabaseAdmin
-        .from('groups')
-        .select('id, name, owner_id')
-        .eq('id', invite.group_id)
-        .single()
       let ownerPhone: string | null = null
       if (group?.owner_id) {
         const { data: owner } = await supabaseAdmin

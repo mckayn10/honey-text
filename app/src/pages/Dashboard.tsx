@@ -31,15 +31,20 @@ const primaryLinkStyle: React.CSSProperties = {
 export function Dashboard() {
 	const [groups, setGroups] = useState<Group[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
 
 	useEffect(() => {
-		loadGroups();
+		loadData();
 	}, []);
 
-	const loadGroups = async () => {
+	const loadData = async () => {
 		try {
-			const data = await apiRequest('/groups');
-			setGroups(data);
+			const [groupsData, statusData] = await Promise.all([
+				apiRequest('/groups'),
+				apiRequest('/billing/status').catch(() => ({ subscription_tier: null })),
+			]);
+			setGroups(groupsData);
+			setSubscriptionTier((statusData as { subscription_tier?: string | null })?.subscription_tier ?? null);
 		} catch (error) {
 			console.error('Failed to load groups:', error);
 		} finally {
@@ -56,6 +61,7 @@ export function Dashboard() {
 	}
 
 	const empty = groups.length === 0;
+	const hasSubscription = subscriptionTier != null && subscriptionTier !== '';
 
 	return (
 		<div
@@ -72,7 +78,35 @@ export function Dashboard() {
 				maxWidth="default"
 				style={{ width: '100%' }}
 			>
-				{empty ? (
+				{!hasSubscription ? (
+					<div
+						style={{
+							textAlign: 'center',
+							padding: '2rem',
+							color: theme.textMuted,
+						}}
+					>
+						<h2
+							style={{
+								color: theme.text,
+								marginBottom: '0.75rem',
+								fontSize: '1.75rem',
+							}}
+						>
+							My Groups
+						</h2>
+						<p style={{ marginBottom: '1.5rem', fontSize: '1rem' }}>
+							Subscribe to create your first group and start
+							sending weekly questions.
+						</p>
+						<Link
+							to="/app/subscribe"
+							style={primaryLinkStyle}
+						>
+							Subscribe
+						</Link>
+					</div>
+				) : empty ? (
 					<div
 						style={{
 							textAlign: 'center',

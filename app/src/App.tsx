@@ -8,6 +8,7 @@ import { GroupDetail } from './pages/GroupDetail';
 import { GroupSettings } from './pages/GroupSettings';
 import { InvitePage } from './pages/InvitePage';
 import { Profile } from './pages/Profile';
+import { Subscribe } from './pages/Subscribe';
 import { AppLayout } from './components/AppLayout';
 import { Loading } from './components/Loading';
 import { useAuth } from './lib/useAuth';
@@ -78,6 +79,7 @@ function App() {
 					<Route index element={<Navigate to="/app/groups" replace />} />
 					<Route path="groups" element={<Dashboard />} />
 					<Route path="profile" element={<Profile />} />
+					<Route path="subscribe" element={<Subscribe />} />
 					<Route path="groups/new" element={<NewGroup />} />
 					<Route path="groups/:id" element={<GroupDetail />} />
 					<Route path="groups/:id/settings" element={<GroupSettings />} />

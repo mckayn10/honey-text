@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import {
 	Container,
@@ -113,6 +113,13 @@ export function NewGroup() {
 								}}
 							>
 								{error}
+								{(error.includes('Upgrade') || error.includes('plan')) && (
+									<div style={{ marginTop: '0.5rem' }}>
+										<Link to="/app/subscribe" style={{ color: theme.primary, fontWeight: 600 }}>
+											Subscribe or upgrade →
+										</Link>
+									</div>
+								)}
 							</div>
 						)}
 

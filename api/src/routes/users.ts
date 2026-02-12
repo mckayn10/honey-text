@@ -15,7 +15,7 @@ router.get('/me', async (req: AuthRequest, res) => {
     const userId = req.user!.id
     const { data, error } = await supabaseAdmin
       .from('users')
-      .select('id, email, display_name, phone')
+      .select('id, email, display_name, phone, stripe_customer_id, subscription_tier')
       .eq('id', userId)
       .single()
 

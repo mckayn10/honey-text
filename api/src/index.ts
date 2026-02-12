@@ -7,6 +7,8 @@ import cronRouter from './routes/cron.js'
 import questionSetsRouter from './routes/questionSets.js'
 import usersRouter from './routes/users.js'
 import conversationsWebhookRouter from './routes/conversationsWebhook.js'
+import billingRouter from './routes/billing.js'
+import stripeWebhookRouter from './routes/stripeWebhook.js'
 
 config()
 
@@ -20,9 +22,14 @@ app.use(cors({
   origin: corsOrigins.length > 1 ? corsOrigins : corsOrigins[0] || 'http://localhost:3000',
   credentials: true,
 }))
+
+// Stripe webhook needs raw body for signature verification - must be before express.json()
+app.use('/webhook', express.raw({ type: 'application/json' }), stripeWebhookRouter)
+
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 
+app.use('/billing', billingRouter)
 app.use('/groups', groupsRouter)
 app.use('/invites', invitesRouter)
 app.use('/cron', cronRouter)

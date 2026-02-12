@@ -2,6 +2,7 @@ import express from 'express'
 import { authenticateUser, AuthRequest } from '../middleware/auth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
 import { addSmsParticipant, removeParticipant, deleteConversation, sendSMS, toE164 } from '../lib/twilio.js'
+import { checkCanCreateGroup, checkCanAddMemberToGroup } from '../lib/subscriptionLimits.js'
 import { randomBytes, randomInt } from 'crypto'
 
 const router = express.Router()
@@ -75,6 +76,11 @@ router.post('/', async (req: AuthRequest, res) => {
 
     if (!userProfile?.phone) {
       return res.status(400).json({ error: 'Add your phone number in Profile before creating a group' })
+    }
+
+    const canCreate = await checkCanCreateGroup(userId)
+    if (!canCreate) {
+      return res.status(400).json({ error: 'Upgrade your plan to create more groups.' })
     }
 
     const { data, error } = await supabaseAdmin
@@ -288,6 +294,11 @@ router.post('/:id/invites', async (req: AuthRequest, res) => {
 
     if (!group) {
       return res.status(404).json({ error: 'Group not found' })
+    }
+
+    const canAdd = await checkCanAddMemberToGroup(userId, groupId)
+    if (!canAdd) {
+      return res.status(400).json({ error: 'Member limit reached. Upgrade to add more.' })
     }
 
     const token = randomBytes(32).toString('hex')

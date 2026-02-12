@@ -2,6 +2,7 @@ import express from 'express'
 import { supabaseAdmin } from '../lib/supabase.js'
 import { toE164 } from '../lib/twilio.js'
 import { ensureGroupConversation } from '../lib/groupConversation.js'
+import { checkCanAddMemberToGroup } from '../lib/subscriptionLimits.js'
 
 const router = express.Router()
 
@@ -75,6 +76,21 @@ router.post('/:token/accept', async (req, res) => {
       return res.json({ message: 'Invite already accepted' })
     }
 
+    const { data: group } = await supabaseAdmin
+      .from('groups')
+      .select('id, name, owner_id')
+      .eq('id', invite.group_id)
+      .single()
+
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' })
+    }
+
+    const canAdd = await checkCanAddMemberToGroup(group.owner_id, invite.group_id)
+    if (!canAdd) {
+      return res.status(400).json({ error: 'Member limit reached for this group. Ask the group owner to upgrade.' })
+    }
+
     // Update invite status
     const { error: updateError } = await supabaseAdmin
       .from('group_invites')
@@ -82,12 +98,6 @@ router.post('/:token/accept', async (req, res) => {
       .eq('id', invite.id)
 
     if (updateError) throw updateError
-
-    const { data: group } = await supabaseAdmin
-      .from('groups')
-      .select('id, name, owner_id')
-      .eq('id', invite.group_id)
-      .single()
 
     let ownerPhone: string | null = null
     if (group?.owner_id) {
