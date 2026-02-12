@@ -68,10 +68,34 @@ export function GroupDetail() {
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+	const [ensuringConversation, setEnsuringConversation] = useState(false);
+	const [conversationError, setConversationError] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (id) loadGroup();
 	}, [id]);
+
+	// When group is active but has no conversation (e.g. owner-only), try to create one
+	useEffect(() => {
+		if (!id || !group || group.status !== 'active' || group.conversation_sid) {
+			setConversationError(null);
+			return;
+		}
+		let cancelled = false;
+		setConversationError(null);
+		setEnsuringConversation(true);
+		apiRequest(`/groups/${id}/ensure-conversation`, { method: 'POST' })
+			.then(() => {
+				if (!cancelled) loadGroup();
+			})
+			.catch((err: { message?: string }) => {
+				if (!cancelled) setConversationError(err?.message ?? 'Could not set up messaging');
+			})
+			.finally(() => {
+				if (!cancelled) setEnsuringConversation(false);
+			});
+		return () => { cancelled = true; };
+	}, [id, group?.id, group?.status, group?.conversation_sid]);
 
 	const loadGroup = async () => {
 		try {
@@ -181,9 +205,34 @@ export function GroupDetail() {
 							marginBottom: '1.5rem',
 						}}
 					>
-						<p style={{ margin: 0, color: theme.textMuted }}>
-							This group has the same members as another group. Invite someone new to start receiving weekly questions via text.
-						</p>
+						{ensuringConversation ? (
+							<p style={{ margin: 0, color: theme.textMuted }}>
+								Setting up messaging…
+							</p>
+						) : (
+							<>
+								<p style={{ margin: 0, marginBottom: conversationError ? '0.75rem' : 0, color: theme.textMuted }}>
+									{conversationError ?? 'This group has the same members as another group. Invite someone new to start receiving weekly questions via text.'}
+								</p>
+								{conversationError && (
+									<Button
+										type="button"
+										variant="primary"
+										size="small"
+										onClick={() => {
+											setConversationError(null);
+											setEnsuringConversation(true);
+											apiRequest(`/groups/${id}/ensure-conversation`, { method: 'POST' })
+												.then(() => loadGroup())
+												.catch((err: { message?: string }) => setConversationError(err?.message ?? 'Could not set up messaging'))
+												.finally(() => setEnsuringConversation(false));
+										}}
+									>
+										Retry
+									</Button>
+								)}
+							</>
+						)}
 					</Card>
 				)}
 

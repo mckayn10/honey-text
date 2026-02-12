@@ -3,6 +3,7 @@ import { authenticateUser, AuthRequest } from '../middleware/auth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
 import { addSmsParticipant, removeParticipant, deleteConversation, sendSMS, toE164 } from '../lib/twilio.js'
 import { checkCanCreateGroup, checkCanAddMemberToGroup } from '../lib/subscriptionLimits.js'
+import { ensureGroupConversation } from '../lib/groupConversation.js'
 import { randomBytes, randomInt } from 'crypto'
 
 const router = express.Router()
@@ -189,6 +190,51 @@ router.get('/:id', async (req: AuthRequest, res) => {
   } catch (error: any) {
     console.error('Error fetching group:', error)
     res.status(500).json({ error: error.message || 'Failed to fetch group' })
+  }
+})
+
+// POST /groups/:id/ensure-conversation - Create Twilio Conversation if missing (e.g. owner-only group)
+router.post('/:id/ensure-conversation', async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id
+    const groupId = req.params.id
+
+    const { data: group } = await supabaseAdmin
+      .from('groups')
+      .select('id, conversation_sid, status')
+      .eq('id', groupId)
+      .eq('owner_id', userId)
+      .single()
+
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' })
+    }
+
+    if (group.conversation_sid) {
+      return res.json({ conversation_sid: group.conversation_sid })
+    }
+
+    if (group.status !== 'active') {
+      return res.status(400).json({ error: 'Group must be active first' })
+    }
+
+    const conversationSid = await ensureGroupConversation(groupId)
+    if (!conversationSid) {
+      return res.status(400).json({
+        error: 'This group has the same members as another group. Invite someone new to start receiving weekly questions via text.',
+      })
+    }
+
+    const { data: updated } = await supabaseAdmin
+      .from('groups')
+      .select('conversation_sid')
+      .eq('id', groupId)
+      .single()
+
+    res.json({ conversation_sid: updated?.conversation_sid ?? conversationSid })
+  } catch (error: any) {
+    console.error('Error ensuring group conversation:', error)
+    res.status(500).json({ error: error.message || 'Failed to set up messaging' })
   }
 })
 
