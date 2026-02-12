@@ -34,3 +34,14 @@ services:
             sync: false
           - key: CORS_ORIGIN
             sync: false
+          # Stripe (use live keys and live webhook secret in production)
+          - key: STRIPE_SECRET_KEY
+            sync: false
+          - key: STRIPE_WEBHOOK_SECRET
+            sync: false
+          - key: STRIPE_BASIC_PRICE_ID
+            sync: false
+          - key: STRIPE_PRO_PRICE_ID
+            sync: false
+          - key: STRIPE_PREMIUM_PRICE_ID
+            sync: false

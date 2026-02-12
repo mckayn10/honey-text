@@ -11,28 +11,31 @@ This guide walks through configuring Stripe for HoneyText subscriptions. Complet
 
 ## 1. Create Products and Prices
 
-1. Go to **Products** → **Add product**
-2. Create each product:
+Subscriptions charge the customer when they select a tier (no free trial). The first invoice must have an amount due so Stripe creates a PaymentIntent and we can show the card form.
 
-### Starter
-- **Name:** Starter
+1. Go to **Products** → **Add product**
+2. Create each product with **no free trial**:
+
+### Basic
+- **Name:** Basic
 - **Description:** 1 group, 5 members per group
-- **Pricing:**
-  - **Standard pricing** → **Recurring**
-  - **Monthly** → **$5.00 USD**
-- Save and copy the **Price ID** (e.g. `price_1Abc...`)
+- **Pricing:** Standard pricing → **Recurring** → **Monthly** → **$5** (or your amount)
+- **Do not** add a free trial to the price
+- Save and copy the **Price ID** (starts with `price_`) → set as `STRIPE_BASIC_PRICE_ID`
 
 ### Pro
 - **Name:** Pro
-- **Description:** 5 groups, 10 members per group
-- **Pricing:** Recurring, Monthly, **$12.00 USD**
-- Copy the **Price ID**
+- **Description:** 3 groups, 5 members per group
+- **Pricing:** Recurring, Monthly, **$10** — **no free trial**
+- Copy the **Price ID** → set as `STRIPE_PRO_PRICE_ID`
 
-### Team
-- **Name:** Team
-- **Description:** 15 groups, 15 members per group
-- **Pricing:** Recurring, Monthly, **$25.00 USD**
-- Copy the **Price ID**
+### Premium
+- **Name:** Premium
+- **Description:** 10 groups, 10 members per group
+- **Pricing:** Recurring, Monthly, **$20** — **no free trial**
+- Copy the **Price ID** → set as `STRIPE_PREMIUM_PRICE_ID`
+
+**If you get "Could not create payment intent":** In Stripe, edit the Price (or create a new one) and ensure there is **no default free trial** on the product/price. The first invoice must charge immediately so we can collect the card.
 
 ---
 
@@ -48,10 +51,12 @@ Add to your environment:
 | Variable | Location | Value |
 |----------|----------|-------|
 | `STRIPE_SECRET_KEY` | `api/.env` | Secret key |
-| `STRIPE_STARTER_PRICE_ID` | `api/.env` | Starter price ID |
+| `STRIPE_BASIC_PRICE_ID` | `api/.env` | Basic price ID |
 | `STRIPE_PRO_PRICE_ID` | `api/.env` | Pro price ID |
-| `STRIPE_TEAM_PRICE_ID` | `api/.env` | Team price ID |
+| `STRIPE_PREMIUM_PRICE_ID` | `api/.env` | Premium price ID |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | `app/.env` | Publishable key |
+
+Tiers without a price ID in env are not returned by `GET /billing/plans`. Add all three if you want Basic, Pro, and Premium to appear.
 
 ---
 

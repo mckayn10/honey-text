@@ -20,6 +20,7 @@ Ensure your code is pushed to GitHub (or GitLab). Render will deploy from this r
     - `TWILIO_PHONE_NUMBER` (E.164, e.g. `+15551234567`)
     - `CRON_SECRET` (pick a long random string; you’ll use it to call the cron endpoint)
     - `CORS_ORIGIN` (your frontend URL, e.g. `https://your-app.vercel.app` or `http://localhost:5173` for local dev)
+    - **Stripe (production):** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_PREMIUM_PRICE_ID` — use **live** keys and a **live** webhook signing secret (see [Go live: Stripe](#go-live-stripe) below).
 6. Click **Apply** and wait for the first deploy.
 
 ## 3. Get your API URL
@@ -134,10 +135,51 @@ Use this checklist to narrow it down.
 
 ---
 
+---
+
+## Go live: Stripe
+
+Before accepting real payments:
+
+1. **Stripe Dashboard → Live mode**  
+   Toggle to **Live** in the header. Complete any account verification Stripe requires.
+
+2. **Live products and prices**  
+   In Live mode, create (or copy from Test) products/prices for Basic, Pro, Premium with the same structure (recurring, no trial). Copy the **live** Price IDs (`price_...`).
+
+3. **Live API keys**  
+   Developers → API keys → use **Publishable** and **Secret** keys that start with `pk_live_` and `sk_live_`.
+
+4. **Production webhook**  
+   - Developers → Webhooks → Add endpoint  
+   - URL: `https://<your-api-url>/webhook`  
+   - Events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`  
+   - Copy the **Signing secret** (`whsec_...`) and set as `STRIPE_WEBHOOK_SECRET` in production (e.g. Render env).  
+   - **Note:** The webhook secret is different in Test vs Live; production must use the Live endpoint’s secret.
+
+5. **Env in production**  
+   In Render (or your host), set:
+   - `STRIPE_SECRET_KEY` = live secret key  
+   - `STRIPE_WEBHOOK_SECRET` = live webhook signing secret  
+   - `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_PREMIUM_PRICE_ID` = live price IDs  
+
+   In your **frontend** build (e.g. Vercel), set:
+   - `VITE_STRIPE_PUBLISHABLE_KEY` = live publishable key  
+   - `VITE_API_URL` = your production API URL  
+
+6. **Customer portal (optional)**  
+   Settings → Billing → Customer portal: configure branding and allowed actions (e.g. update payment method, cancel). The “Manage billing” button uses this.
+
+7. **No test cards in production**  
+   In Live mode, only real cards work. Test cards (e.g. 4242…) are rejected.
+
+---
+
 **Summary**
 
 | Use            | URL / value                                                                                                      |
 | -------------- | ---------------------------------------------------------------------------------------------------------------- |
 | API base       | `https://<service-name>.onrender.com`                                                                            |
 | Twilio webhook | `https://<service-name>.onrender.com/twilio/conversations/webhook`                                               |
+| Stripe webhook | `https://<service-name>.onrender.com/webhook`                                                                   |
 | Cron endpoint  | `POST https://<service-name>.onrender.com/cron/send-weekly-questions` with `Authorization: Bearer <CRON_SECRET>` |
