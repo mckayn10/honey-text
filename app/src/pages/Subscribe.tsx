@@ -195,7 +195,7 @@ export function Subscribe() {
 							onClick={async () => {
 								try {
 									const data = await apiRequest('/billing/portal', { method: 'POST' });
-									if (data?.url) window.location.href = data.url;
+									if (data?.url) window.open(data.url, '_blank', 'noopener,noreferrer');
 								} catch (err: any) {
 									setError(err.message || 'Failed to open billing portal');
 								}
