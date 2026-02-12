@@ -7,6 +7,7 @@ import {
   getAllowedPriceIds,
   getTierByPriceId,
 } from '../lib/subscriptionConfig.js'
+import { checkCanSwitchToTier } from '../lib/subscriptionLimits.js'
 
 const router = express.Router()
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -232,6 +233,143 @@ router.post('/confirm-subscription', authenticateUser, async (req: AuthRequest, 
   } catch (error: any) {
     console.error('Error confirming subscription:', error)
     res.status(500).json({ error: error.message || 'Failed to confirm subscription' })
+  }
+})
+
+// POST /billing/preview-change - Preview proration when changing plan (upgrade or downgrade)
+router.post('/preview-change', authenticateUser, async (req: AuthRequest, res) => {
+  try {
+    if (!stripe) {
+      return res.status(503).json({ error: 'Billing is not configured' })
+    }
+
+    const userId = req.user!.id
+    const { price_id } = req.body
+
+    if (!price_id || typeof price_id !== 'string') {
+      return res.status(400).json({ error: 'Missing price_id' })
+    }
+
+    const allowedIds = getAllowedPriceIds()
+    if (!allowedIds.includes(price_id)) {
+      return res.status(400).json({ error: 'Invalid price' })
+    }
+
+    const targetTier = getTierByPriceId(price_id)
+    if (targetTier) {
+      const switchCheck = await checkCanSwitchToTier(userId, targetTier)
+      if (!switchCheck.allowed) {
+        return res.status(400).json({ error: switchCheck.reason })
+      }
+    }
+
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('stripe_subscription_id')
+      .eq('id', userId)
+      .single()
+
+    if (userError || !user?.stripe_subscription_id) {
+      return res.status(400).json({ error: 'No active subscription' })
+    }
+
+    const sub = await stripe.subscriptions.retrieve(user.stripe_subscription_id)
+    if (sub.metadata?.supabase_user_id !== userId) {
+      return res.status(403).json({ error: 'Subscription does not belong to user' })
+    }
+
+    const itemId = sub.items?.data?.[0]?.id
+    if (!itemId) {
+      return res.status(400).json({ error: 'Subscription has no items' })
+    }
+
+    const invoice = await stripe.invoices.createPreview({
+      subscription: user.stripe_subscription_id,
+      subscription_details: {
+        items: [{ id: itemId, price: price_id }],
+        proration_behavior: 'always_invoice',
+      },
+    })
+
+    const amountDue = invoice.amount_due ?? 0
+    const currency = (invoice.currency ?? 'usd').toUpperCase()
+
+    res.json({
+      amount_due: amountDue,
+      currency,
+      is_charge: amountDue > 0,
+      is_credit: amountDue < 0,
+    })
+  } catch (error: any) {
+    console.error('Error previewing subscription change:', error)
+    res.status(500).json({ error: error.message || 'Failed to preview change' })
+  }
+})
+
+// POST /billing/update-subscription - Change plan (upgrade or downgrade)
+router.post('/update-subscription', authenticateUser, async (req: AuthRequest, res) => {
+  try {
+    if (!stripe) {
+      return res.status(503).json({ error: 'Billing is not configured' })
+    }
+
+    const userId = req.user!.id
+    const { price_id } = req.body
+
+    if (!price_id || typeof price_id !== 'string') {
+      return res.status(400).json({ error: 'Missing price_id' })
+    }
+
+    const allowedIds = getAllowedPriceIds()
+    if (!allowedIds.includes(price_id)) {
+      return res.status(400).json({ error: 'Invalid price' })
+    }
+
+    const targetTier = getTierByPriceId(price_id)
+    if (targetTier) {
+      const switchCheck = await checkCanSwitchToTier(userId, targetTier)
+      if (!switchCheck.allowed) {
+        return res.status(400).json({ error: switchCheck.reason })
+      }
+    }
+
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('stripe_subscription_id')
+      .eq('id', userId)
+      .single()
+
+    if (userError || !user?.stripe_subscription_id) {
+      return res.status(400).json({ error: 'No active subscription. Subscribe first.' })
+    }
+
+    const sub = await stripe.subscriptions.retrieve(user.stripe_subscription_id)
+    if (sub.metadata?.supabase_user_id !== userId) {
+      return res.status(403).json({ error: 'Subscription does not belong to user' })
+    }
+
+    const itemId = sub.items?.data?.[0]?.id
+    if (!itemId) {
+      return res.status(400).json({ error: 'Subscription has no items' })
+    }
+
+    await stripe.subscriptions.update(user.stripe_subscription_id, {
+      items: [{ id: itemId, price: price_id }],
+      proration_behavior: 'always_invoice',
+    })
+
+    const tier = getTierByPriceId(price_id)
+    if (tier) {
+      await supabaseAdmin
+        .from('users')
+        .update({ subscription_tier: tier })
+        .eq('id', userId)
+    }
+
+    res.json({ success: true, subscription_tier: tier ?? null })
+  } catch (error: any) {
+    console.error('Error updating subscription:', error)
+    res.status(500).json({ error: error.message || 'Failed to update subscription' })
   }
 })
 

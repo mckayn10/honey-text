@@ -63,6 +63,7 @@ export function AppLayout() {
 								alignItems: 'center',
 							}}
 						>
+							<ButtonLink to="/app/groups" style={{ textDecoration: 'none' }}>Groups</ButtonLink>
 							<ButtonLink to="/app/subscribe" style={{ textDecoration: 'none' }}>Billing</ButtonLink>
 							<ButtonLink to="/app/profile" style={{ textDecoration: 'none' }}>Profile</ButtonLink>
 							<button
