@@ -7,6 +7,8 @@ import { NewGroup } from './pages/NewGroup';
 import { GroupDetail } from './pages/GroupDetail';
 import { GroupSettings } from './pages/GroupSettings';
 import { InvitePage } from './pages/InvitePage';
+import { Privacy } from './pages/Privacy';
+import { Terms } from './pages/Terms';
 import { Profile } from './pages/Profile';
 import { Subscribe } from './pages/Subscribe';
 import { AppLayout } from './components/AppLayout';
@@ -88,6 +90,8 @@ function App() {
 					path="/invite/:token"
 					element={<InvitePage />}
 				/>
+				<Route path="/privacy" element={<Privacy />} />
+				<Route path="/terms" element={<Terms />} />
 			</Routes>
 		</BrowserRouter>
 	);

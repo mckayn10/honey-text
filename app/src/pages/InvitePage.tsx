@@ -127,6 +127,10 @@ export function InvitePage() {
 					<p style={{ marginTop: '1rem', color: theme.textMuted, fontSize: '0.9rem' }}>
 						Please confirm this information is correct, then click Accept.
 					</p>
+
+					<p style={{ marginTop: '1.25rem', fontSize: '0.8rem', color: theme.textMuted, lineHeight: 1.5 }}>
+						By clicking Accept Invitation, you consent to receive text messages from HoneyText for this group (weekly discussion questions and related updates). Consent is not a condition of purchase. Msg & data rates may apply. Message frequency: about one message per week per group, plus occasional transactional messages. Reply <strong>STOP</strong> to opt out or <strong>HELP</strong> for help. <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: theme.primary }}>Privacy Policy</a> & <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: theme.primary }}>Terms</a>.
+					</p>
 				</div>
 
 				{error && (
