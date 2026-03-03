@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Header } from '../components/Header';
 import { publicApiRequest } from '../lib/api';
 import { formatPhoneForDisplay } from '../lib/phone';
 import { Button, Loading } from '../components';

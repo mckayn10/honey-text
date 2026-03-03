@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Header } from '../components/Header';
 import { apiRequest } from '../lib/api';
 import { formatPhoneForDisplay, formatPhoneForInput, parsePhoneToDigits } from '../lib/phone';
 import { Container, Button, ButtonLink, FormGroup, Card, Loading, inputStyle, inputFocusStyle } from '../components';

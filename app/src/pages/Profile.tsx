@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header } from '../components/Header';
 import { apiRequest } from '../lib/api';
 import { formatPhoneForInput, parsePhoneToDigits } from '../lib/phone';
 import {
