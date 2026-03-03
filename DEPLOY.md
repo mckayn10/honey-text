@@ -20,7 +20,7 @@ Ensure your code is pushed to GitHub (or GitLab). Render will deploy from this r
     - `TWILIO_PHONE_NUMBER` (E.164, e.g. `+15551234567`)
     - `CRON_SECRET` (pick a long random string; you’ll use it to call the cron endpoint)
     - `CORS_ORIGIN` (your frontend URL, e.g. `https://your-app.vercel.app` or `http://localhost:5173` for local dev)
-    - **`SEND_WEEKLY_VIA_ONE_TO_ONE_SMS`** (optional) – set to `true` or `1` to send weekly questions via one-to-one SMS (toll-free friendly). Leave unset to use Group MMS once A2P 10DLC is done.
+    - **Stripe (production):** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_PREMIUM_PRICE_ID` — use **live** keys and a **live** webhook signing secret (see [Go live: Stripe](#go-live-stripe) below).
 6. Click **Apply** and wait for the first deploy.
 
 ## 3. Get your API URL
@@ -57,27 +57,7 @@ If the cron runs and your API sends the question, but **no one receives the text
 
 **Global webhooks** (Conversations → Global webhooks) are for receiving Conversation events (e.g. `onMessageAdded`). If you already receive inbound replies at your webhook from the number config, you don’t need to duplicate that here unless you want service-level logging.
 
-### One-to-one SMS replies (relay to group)
-
-When using **one-to-one SMS** (`SEND_WEEKLY_VIA_ONE_TO_ONE_SMS=true`), replies to your Twilio number are not Conversation events—they are standard inbound SMS. The same webhook (`/twilio/conversations/webhook`) handles both. Ensure your **phone number’s** “A message comes in” webhook is set to that URL (Phone Numbers → [your number] → Messaging → “A message comes in” → Webhook). The API will look up the group from the last one-to-one send, log the reply in `group_messages`, and relay it to the other members as `AuthorName: reply text`.
-
-### Testing replies with only the virtual number
-
-You only need the Twilio virtual number and **one** phone (yours) to confirm that replies are **received**; you need **two** recipient phones to confirm **relay**.
-
-1. **Confirm reply is received**
-    - Create a group with **one** member: your phone number. Trigger the cron so the weekly question is sent to your phone (and `one_to_one_send_context` gets a row).
-    - From your phone, reply to the Twilio number (e.g. “Test reply”).
-    - **Check API logs** (Render → your service → Logs). You should see: `[webhook] inbound one-to-one received` with `group_id`, `from`, `author`, `body_preview`, and `relay_to_count: 0` (no other members).
-    - **Check Supabase**: table `group_messages` should have a new row with `direction: 'inbound'`, your author name, and the reply body. That confirms the virtual number’s inbound SMS hit the webhook and was stored.
-
-2. **Confirm relay**
-    - Add a **second** group member with a different phone that can receive SMS (e.g. a second line or a friend’s number; on Twilio trial it must be a verified number). Trigger the cron again so both members get the question (and context is recorded for both).
-    - Reply from **your** phone to the Twilio number.
-    - **Check logs**: `relay_to_count: 1`, `relay_to_phones: [<other number>]`, and `[webhook] relay sent to <number>`.
-    - **Check the other phone**: it should receive an SMS like `YourName: Test reply`.
-
-If you see `no context for` in the logs, the reply wasn’t tied to a group—trigger the cron first so a one-to-one send has been made to your number for that group, then reply again.
+The same webhook also handles **invite accept via SMS**: when someone replies “YES &lt;code&gt;” from the invited phone number, the API adds them to the group and sends a confirmation. Ensure your phone number’s “A message comes in” webhook is set to the same URL.
 
 ## 5. Cron: weekly questions
 
@@ -104,12 +84,7 @@ Something must call your API on a schedule (e.g. every hour) so questions are se
     - **Schedule**: e.g. every hour.
 3. Save. The job will POST to your API on the schedule.
 
-The API only sends questions for groups whose `schedule_day` and `schedule_time` (in their timezone) fall within the current hour.
-
-### Toll-free / one-to-one SMS vs Group MMS
-
-- **One-to-one SMS** (toll-free friendly): Set `SEND_WEEKLY_VIA_ONE_TO_ONE_SMS=true` (or `1`) in the API env. The cron sends the question via regular SMS to each group member’s phone (one message per member). Use this with a **toll-free** number and [toll-free verification](https://www.twilio.com/docs/usage/tutorials/how-to-use-your-free-trial-account#toll-free-verification-us-and-canada-only) so you can test on a trial account. Recipients must be in **Verified Caller IDs** on trial.
-- **Group MMS** (Conversation): Leave `SEND_WEEKLY_VIA_ONE_TO_ONE_SMS` **unset**. The cron sends one message to the Twilio Conversation; Twilio delivers to all participants (group thread). Requires a **US/Canada long code** and **A2P 10DLC** registration for delivery. Once A2P is done, unset or remove `SEND_WEEKLY_VIA_ONE_TO_ONE_SMS` and use your long code to switch back to Group MMS.
+The API sends one message per group to the Twilio Conversation (Group MMS); Twilio delivers to all participants. Requires a **US/Canada long code** and **A2P 10DLC** registration for delivery.
 
 ## 6. Point the frontend at the API
 
@@ -118,6 +93,16 @@ In your frontend env (e.g. Vite `.env`), set the API base URL to your Render URL
 - **`VITE_API_URL=https://<your-api-url>`**
 
 Restart the dev server or redeploy the frontend so it uses this URL.
+
+---
+
+## 7. SPA routing (fix 404 on refresh)
+
+The app uses client-side routing (e.g. `/app/groups`, `/app/subscribe`). If the frontend host doesn’t serve `index.html` for those paths, **refreshing** or opening a deep link returns **404** and can make it seem like you’re logged out when you go back to the main URL.
+
+- **Vercel:** The repo includes `app/vercel.json` with a rewrite so all routes serve `index.html`. Deploy from the `app` directory (or set Root Directory to `app`) so Vercel uses it.
+- **Netlify:** The repo includes `app/public/_redirects` (`/* /index.html 200`). It’s copied into the build output; no extra config needed if you build from `app`.
+- **Other hosts (Render static, S3 + CloudFront, etc.):** Configure the server so that for any path that isn’t a real file, it serves `index.html` with status 200 (SPA fallback). Without this, refresh on `/app/groups` will 404.
 
 ---
 
@@ -158,9 +143,45 @@ Use this checklist to narrow it down.
     - **Associate your Twilio number** with the approved Campaign.
     - See [Twilio A2P 10DLC](https://www.twilio.com/docs/messaging/a2p-10dlc). Brand/campaign approval can take a few days.
 
-### 6. Fallback: one-to-one SMS (no Group MMS)
+---
 
-- If Group MMS keeps failing (carrier/registration/trial), you can temporarily send the question via **one-to-one SMS** (Twilio `messages.create` to each member’s phone) instead of the Conversation. That uses a different path and often works when Group MMS is blocked. Implementing that would be a small change to the cron (loop over members, send SMS per phone) and can be reverted once Group MMS is fixed.
+---
+
+## Go live: Stripe
+
+Before accepting real payments:
+
+1. **Stripe Dashboard → Live mode**  
+   Toggle to **Live** in the header. Complete any account verification Stripe requires.
+
+2. **Live products and prices**  
+   In Live mode, create (or copy from Test) products/prices for Basic, Pro, Premium with the same structure (recurring, no trial). Copy the **live** Price IDs (`price_...`).
+
+3. **Live API keys**  
+   Developers → API keys → use **Publishable** and **Secret** keys that start with `pk_live_` and `sk_live_`.
+
+4. **Production webhook**  
+   - Developers → Webhooks → Add endpoint  
+   - URL: `https://<your-api-url>/webhook`  
+   - Events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`  
+   - Copy the **Signing secret** (`whsec_...`) and set as `STRIPE_WEBHOOK_SECRET` in production (e.g. Render env).  
+   - **Note:** The webhook secret is different in Test vs Live; production must use the Live endpoint’s secret.
+
+5. **Env in production**  
+   In Render (or your host), set:
+   - `STRIPE_SECRET_KEY` = live secret key  
+   - `STRIPE_WEBHOOK_SECRET` = live webhook signing secret  
+   - `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_PREMIUM_PRICE_ID` = live price IDs  
+
+   In your **frontend** build (e.g. Vercel), set:
+   - `VITE_STRIPE_PUBLISHABLE_KEY` = live publishable key  
+   - `VITE_API_URL` = your production API URL  
+
+6. **Customer portal (optional)**  
+   Settings → Billing → Customer portal: configure branding and allowed actions (e.g. update payment method, cancel). The “Manage billing” button uses this.
+
+7. **No test cards in production**  
+   In Live mode, only real cards work. Test cards (e.g. 4242…) are rejected.
 
 ---
 
@@ -170,4 +191,5 @@ Use this checklist to narrow it down.
 | -------------- | ---------------------------------------------------------------------------------------------------------------- |
 | API base       | `https://<service-name>.onrender.com`                                                                            |
 | Twilio webhook | `https://<service-name>.onrender.com/twilio/conversations/webhook`                                               |
+| Stripe webhook | `https://<service-name>.onrender.com/webhook`                                                                   |
 | Cron endpoint  | `POST https://<service-name>.onrender.com/cron/send-weekly-questions` with `Authorization: Bearer <CRON_SECRET>` |

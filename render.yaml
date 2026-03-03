@@ -34,6 +34,14 @@ services:
             sync: false
           - key: CORS_ORIGIN
             sync: false
-          # Set to 'true' or '1' to send weekly questions via one-to-one SMS (toll-free friendly). Unset to use Group MMS (Conversation) once A2P 10DLC is done.
-          - key: SEND_WEEKLY_VIA_ONE_TO_ONE_SMS
+          # Stripe (use live keys and live webhook secret in production)
+          - key: STRIPE_SECRET_KEY
+            sync: false
+          - key: STRIPE_WEBHOOK_SECRET
+            sync: false
+          - key: STRIPE_BASIC_PRICE_ID
+            sync: false
+          - key: STRIPE_PRO_PRICE_ID
+            sync: false
+          - key: STRIPE_PREMIUM_PRICE_ID
             sync: false

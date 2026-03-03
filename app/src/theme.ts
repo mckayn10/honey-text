@@ -1,0 +1,35 @@
+/** Shared colors and style values */
+export const theme = {
+  primary: '#EF8128',
+  primaryShadow: 'rgba(239, 129, 40, 0.25)',
+  primaryFocus: 'rgba(239, 129, 40, 0.15)',
+  border: '#E8DDD0',
+  borderLight: '#F0E6DA',
+  danger: '#b42318',
+  dangerBg: '#fff5f5',
+  dangerBorder: '#f4c6c6',
+  errorBg: '#fee',
+  errorText: '#c33',
+  successBg: '#ecfdf3',
+  successText: '#027a48',
+  text: '#3D3A35',
+  textMuted: '#5C5852',
+  textLight: '#8A8580',
+  bg: '#FFF8EE',
+  bgSubtle: '#FFF6E8',
+  shadow: '0 2px 8px rgba(61, 58, 53, 0.08)',
+  shadowHover: '0 4px 12px rgba(61, 58, 53, 0.12)',
+  shadowCard: '0 8px 24px rgba(61, 58, 53, 0.06)',
+  headerBorder: 'rgba(239, 129, 40, 0.15)',
+  gradientTop: '#FFD76B',
+  gradientBottom: '#F7A626',
+} as const;
+
+export const containerWidths = {
+  wide: 1200,
+  default: 960,
+  form: 720,
+  narrow: 600,
+  auth: 400,
+  invite: 500,
+} as const;

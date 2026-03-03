@@ -50,7 +50,7 @@ export function getTwilioNumber(): string {
     throw new Error('Missing TWILIO_PHONE_NUMBER')
   }
   const e164 = toE164(fromNumber)
-  // US/Canada: long code or toll-free (+1 and 12 chars). Group MMS requires long code; one-to-one SMS works with toll-free.
+  // US/Canada long code required for Group MMS (Conversation).
   if (!e164.startsWith('+1') || e164.length !== 12) {
     throw new Error(
       'TWILIO_PHONE_NUMBER must be a US/Canada number in E.164 (e.g. +15551234567 or +18005551234).'

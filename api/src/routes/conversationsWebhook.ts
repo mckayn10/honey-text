@@ -1,11 +1,13 @@
 import express from 'express'
 import { supabaseAdmin } from '../lib/supabase.js'
 import { sendSMS, toE164 } from '../lib/twilio.js'
+import { ensureGroupConversation } from '../lib/groupConversation.js'
+import { checkCanAddMemberToGroup } from '../lib/subscriptionLimits.js'
 
 const router = express.Router()
 
 // POST /twilio/conversations/webhook
-// Handles both: (1) Twilio Conversations payload (Group MMS), (2) standard SMS payload (one-to-one replies)
+// Handles: (1) Twilio Conversations payload (Group MMS), (2) standard SMS for invite accept (reply YES code)
 router.post('/conversations/webhook', async (req, res) => {
   try {
     const {
@@ -41,72 +43,113 @@ router.post('/conversations/webhook', async (req, res) => {
       return res.status(200).send('ok')
     }
 
-    // (2) Standard SMS payload (one-to-one reply): From = sender, To = our number
+    // (2) Standard SMS: invite accept (reply YES <code> from invited phone)
     if (!From || !To || Body == null) {
       return res.status(200).send('ok')
     }
     let fromE164: string
-    let toE164Num: string
     try {
       fromE164 = toE164(From)
-      toE164Num = toE164(To)
     } catch {
       return res.status(200).send('ok')
     }
-    const { data: context } = await supabaseAdmin
-      .from('one_to_one_send_context')
-      .select('group_id')
-      .eq('twilio_number', toE164Num)
-      .eq('recipient_phone', fromE164)
-      .order('sent_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (!context?.group_id) {
-      console.log('[webhook] inbound one-to-one: no context for', { to: toE164Num, from: fromE164 })
-      return res.status(200).send('ok')
-    }
-    const groupId = context.group_id
-
-    const { data: membersForGroup } = await supabaseAdmin
-      .from('group_members')
-      .select('name, phone')
-      .eq('group_id', groupId)
-    const authorMember = (membersForGroup || []).find(
-      (m) => m.phone && toE164(m.phone) === fromE164
-    )
-    const authorName = authorMember?.name || fromE164
-
-    await supabaseAdmin.from('group_messages').insert({
-      group_id: groupId,
-      conversation_sid: null,
-      participant_sid: null,
-      author: authorName,
-      body: Body,
-      direction: 'inbound',
+    const bodyTrim = String(Body).trim()
+    const bodyUpper = bodyTrim.toUpperCase()
+    const { data: pendingInvites } = await supabaseAdmin
+      .from('group_invites')
+      .select('id, group_id, invitee_name, accept_code')
+      .eq('invitee_phone', fromE164)
+      .eq('status', 'pending')
+    const matchingInvite = (pendingInvites || []).find((inv) => {
+      const code = String(inv.accept_code || '').trim()
+      if (!code) return false
+      return bodyUpper === code || bodyUpper === `YES ${code}`
     })
+    if (matchingInvite) {
+      const invite = matchingInvite
+      const { data: group } = await supabaseAdmin
+        .from('groups')
+        .select('id, name, owner_id')
+        .eq('id', invite.group_id)
+        .single()
+      if (!group) {
+        return res.status(200).send('ok')
+      }
+      const canAdd = await checkCanAddMemberToGroup(group.owner_id, invite.group_id)
+      if (!canAdd) {
+        try {
+          await sendSMS(fromE164, 'This group has reached its member limit. The owner can upgrade their plan to add you.')
+        } catch (err) {
+          console.error('[webhook] member limit SMS failed:', err)
+        }
+        return res.status(200).send('ok')
+      }
+      const { error: updateError } = await supabaseAdmin
+        .from('group_invites')
+        .update({ status: 'accepted' })
+        .eq('id', invite.id)
+      if (updateError) {
+        console.error('[webhook] invite accept update failed:', updateError)
+        return res.status(200).send('ok')
+      }
+      let ownerPhone: string | null = null
+      if (group?.owner_id) {
+        const { data: owner } = await supabaseAdmin
+          .from('users')
+          .select('phone')
+          .eq('id', group.owner_id)
+          .single()
+        ownerPhone = owner?.phone ? toE164(owner.phone) : null
+      }
+      const isOwnerSelfInvite = ownerPhone === fromE164
 
-    const otherMembers = (membersForGroup || []).filter(
-      (m) => m.phone && toE164(m.phone) !== fromE164
-    )
-
-    console.log('[webhook] inbound one-to-one received', {
-      group_id: groupId,
-      from: fromE164,
-      author: authorName,
-      body_preview: String(Body).slice(0, 50),
-      relay_to_count: otherMembers.length,
-      relay_to_phones: otherMembers.map((m) => m.phone),
-    })
-
-    const relayBody = `${authorName}: ${Body}`
-    for (const m of otherMembers || []) {
-      if (!m.phone) continue
-      try {
-        await sendSMS(m.phone, relayBody)
-        console.log('[webhook] relay sent to', m.phone)
-      } catch (err) {
-        console.error('[webhook] relay to', m.phone, 'failed:', err)
+      if (isOwnerSelfInvite) {
+        // Owner verification: activate group, add owner to group_members, create Conversation so owner gets weekly questions
+        await supabaseAdmin
+          .from('groups')
+          .update({ status: 'active' })
+          .eq('id', invite.group_id)
+        await supabaseAdmin.from('group_members').insert({
+          group_id: invite.group_id,
+          name: invite.invitee_name,
+          phone: fromE164,
+          invite_id: invite.id,
+          confirmed_at: new Date().toISOString(),
+          is_owner: true,
+        })
+        try {
+          await ensureGroupConversation(invite.group_id)
+        } catch (err) {
+          console.error('[webhook] ensureGroupConversation (owner-only) failed:', err)
+        }
+        try {
+          await sendSMS(fromE164, `HoneyText: Your group "${group?.name ?? 'Group'}" is now active! Add members and start receiving weekly questions. Reply HELP for help. Reply STOP to opt out.`)
+        } catch (err) {
+          console.error('[webhook] owner confirm SMS failed:', err)
+        }
+        console.log('[webhook] owner verified group via SMS', { invite_id: invite.id, group_id: invite.group_id })
+      } else {
+        await supabaseAdmin.from('group_members').insert({
+          group_id: invite.group_id,
+          name: invite.invitee_name,
+          phone: fromE164,
+          invite_id: invite.id,
+          confirmed_at: new Date().toISOString(),
+          is_owner: false,
+        })
+        await supabaseAdmin.from('groups').update({ status: 'active' }).eq('id', invite.group_id)
+        try {
+          await ensureGroupConversation(invite.group_id)
+        } catch (err) {
+          console.error('[webhook] ensureGroupConversation failed:', err)
+        }
+        const groupName = group?.name ?? 'the group'
+        try {
+          await sendSMS(fromE164, `HoneyText: You're in! You've joined ${groupName}. You'll receive weekly questions via text. Reply HELP for help. Reply STOP to opt out.`)
+        } catch (err) {
+          console.error('[webhook] confirm SMS failed:', err)
+        }
+        console.log('[webhook] invite accepted via SMS', { invite_id: invite.id, group_id: invite.group_id, from: fromE164 })
       }
     }
 

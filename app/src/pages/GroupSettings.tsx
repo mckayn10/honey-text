@@ -2,8 +2,15 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { apiRequest } from '../lib/api';
-import './GroupSettings.css';
-import './GroupForm.css';
+import {
+	Container,
+	Button,
+	FormGroup,
+	Card,
+	Loading,
+	inputStyle,
+} from '../components';
+import { theme } from '../theme';
 
 interface Group {
 	id: string;
@@ -12,6 +19,8 @@ interface Group {
 	schedule_time: string;
 	schedule_timezone: string;
 }
+
+const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' };
 
 export function GroupSettings() {
 	const { id } = useParams<{ id: string }>();
@@ -83,10 +92,8 @@ export function GroupSettings() {
 
 	const handleDeleteGroup = async () => {
 		if (!group) return;
-		const confirmDelete = window.confirm(
-			`Delete "${group.name}"? This cannot be undone.`,
-		);
-		if (!confirmDelete) return;
+		if (!window.confirm(`Delete "${group.name}"? This cannot be undone.`))
+			return;
 		setDeleting(true);
 		setError(null);
 		try {
@@ -99,53 +106,79 @@ export function GroupSettings() {
 		}
 	};
 
-	if (loading) {
+	if (loading)
 		return (
-			<div className="group-settings-page">
-				<Header />
-				<div className="container">Loading...</div>
+			<div style={{ padding: '2.5rem 0 3rem' }}>
+				<Loading fullHeight />
 			</div>
 		);
-	}
-
-	if (!group) {
-		return (
-			<div className="group-settings-page">
-				<Header />
-				<div className="container">Group not found</div>
-			</div>
-		);
-	}
+	if (!group) return null;
 
 	return (
-		<div className="group-settings-page">
-			<Header />
-			<div className="container">
-				<div className="settings-header">
+		<div style={{ padding: '0rem 0 3rem' }}>
+			<Container maxWidth="narrow">
+				<div style={{ marginBottom: '1rem' }}>
 					<Link
 						to={`/app/groups/${id}`}
-						className="button-link"
+						style={{
+							color: theme.primary,
+							textDecoration: 'none',
+							fontSize: '0.95rem',
+						}}
 					>
 						← Back to Group
 					</Link>
 				</div>
+				<h1
+					style={{
+						color: theme.text,
+						marginBottom: '1.5rem',
+						fontSize: '1.75rem',
+						letterSpacing: '-0.02em',
+					}}
+				>
+					Settings: {group.name}
+				</h1>
 
-				<h1>Settings: {group.name}</h1>
-
-				<section className="settings-section">
-					<h2>Question time</h2>
-					<p className="settings-description">
+				<Card>
+					<h2
+						style={{
+							color: theme.text,
+							fontSize: '1.15rem',
+							marginBottom: '0.5rem',
+						}}
+					>
+						Question time
+					</h2>
+					<p
+						style={{
+							color: theme.textMuted,
+							fontSize: '0.95rem',
+							marginBottom: '1.25rem',
+							lineHeight: 1.45,
+						}}
+					>
 						When the weekly question is sent to this group (in the
 						timezone below).
 					</p>
-					<form
-						onSubmit={handleSaveSchedule}
-						className="group-form"
-					>
-						{error && <div className="error">{error}</div>}
-
-						<div className="form-group">
-							<label htmlFor="scheduleDay">Day of week</label>
+					<form onSubmit={handleSaveSchedule}>
+						{error && (
+							<div
+								style={{
+									backgroundColor: theme.errorBg,
+									color: theme.errorText,
+									padding: '0.75rem',
+									borderRadius: 4,
+									marginBottom: '1rem',
+								}}
+							>
+								{error}
+							</div>
+						)}
+						<FormGroup
+							label="Day of week"
+							htmlFor="scheduleDay"
+						>
 							<select
 								id="scheduleDay"
 								value={scheduleDay}
@@ -153,6 +186,7 @@ export function GroupSettings() {
 									setScheduleDay(Number(e.target.value))
 								}
 								required
+								style={selectStyle}
 							>
 								<option value={0}>Sunday</option>
 								<option value={1}>Monday</option>
@@ -162,10 +196,11 @@ export function GroupSettings() {
 								<option value={5}>Friday</option>
 								<option value={6}>Saturday</option>
 							</select>
-						</div>
-
-						<div className="form-group">
-							<label htmlFor="scheduleTime">Time</label>
+						</FormGroup>
+						<FormGroup
+							label="Time"
+							htmlFor="scheduleTime"
+						>
 							<input
 								id="scheduleTime"
 								type="time"
@@ -174,11 +209,13 @@ export function GroupSettings() {
 									setScheduleTime(e.target.value)
 								}
 								required
+								style={inputStyle}
 							/>
-						</div>
-
-						<div className="form-group">
-							<label htmlFor="scheduleTimezone">Timezone</label>
+						</FormGroup>
+						<FormGroup
+							label="Timezone"
+							htmlFor="scheduleTimezone"
+						>
 							<select
 								id="scheduleTimezone"
 								value={scheduleTimezone}
@@ -186,6 +223,7 @@ export function GroupSettings() {
 									setScheduleTimezone(e.target.value)
 								}
 								required
+								style={selectStyle}
 							>
 								<option value="America/Los_Angeles">
 									Pacific Time
@@ -200,37 +238,56 @@ export function GroupSettings() {
 									Eastern Time
 								</option>
 							</select>
-						</div>
-
-						<div className="form-actions">
-							<button
+						</FormGroup>
+						<div style={{ marginTop: '2rem' }}>
+							<Button
 								type="submit"
-								className="button button-primary"
+								variant="primary"
 								disabled={saving}
 							>
 								{saving ? 'Saving...' : 'Save schedule'}
-							</button>
+							</Button>
 						</div>
 					</form>
-				</section>
+				</Card>
 
-				<section className="settings-section settings-danger">
-					<h2>Delete group</h2>
-					<p className="settings-description">
+				<Card
+					style={{
+						borderColor: theme.dangerBorder,
+						background: '#fffbfb',
+					}}
+				>
+					<h2
+						style={{
+							color: theme.text,
+							fontSize: '1.15rem',
+							marginBottom: '0.5rem',
+						}}
+					>
+						Delete group
+					</h2>
+					<p
+						style={{
+							color: theme.textMuted,
+							fontSize: '0.95rem',
+							marginBottom: '1.25rem',
+							lineHeight: 1.45,
+						}}
+					>
 						Permanently delete this group and its conversation.
 						Invites and member list will be removed. This cannot be
 						undone.
 					</p>
-					<button
+					<Button
 						type="button"
-						onClick={handleDeleteGroup}
-						className="button button-danger"
+						variant="danger"
 						disabled={deleting}
+						onClick={handleDeleteGroup}
 					>
 						{deleting ? 'Deleting...' : 'Delete group'}
-					</button>
-				</section>
-			</div>
+					</Button>
+				</Card>
+			</Container>
 		</div>
 	);
 }
