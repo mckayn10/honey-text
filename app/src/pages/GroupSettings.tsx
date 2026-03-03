@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Header } from '../components/Header';
 import { apiRequest } from '../lib/api';
 import './GroupSettings.css';
 import './GroupForm.css';
@@ -99,15 +100,26 @@ export function GroupSettings() {
 	};
 
 	if (loading) {
-		return <div className="group-settings-page">Loading...</div>;
+		return (
+			<div className="group-settings-page">
+				<Header />
+				<div className="container">Loading...</div>
+			</div>
+		);
 	}
 
 	if (!group) {
-		return null;
+		return (
+			<div className="group-settings-page">
+				<Header />
+				<div className="container">Group not found</div>
+			</div>
+		);
 	}
 
 	return (
 		<div className="group-settings-page">
+			<Header />
 			<div className="container">
 				<div className="settings-header">
 					<Link

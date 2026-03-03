@@ -1,7 +1,26 @@
 .group-settings-page {
   min-height: 100vh;
-  background-color: white;
-  padding: 2.5rem 0 3rem;
+  background-color: var(--color-cream);
+  padding: 0 0 3rem;
+  position: relative;
+}
+
+/* Honeycomb pattern background */
+.group-settings-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23EF8128' fill-opacity='0.04'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5V28.97h-.01L17 36.35V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.group-settings-page > * {
+  position: relative;
+  z-index: 1;
 }
 
 .group-settings-page .container {
@@ -15,29 +34,31 @@
 }
 
 .group-settings-page h1 {
-  color: #333;
+  color: var(--color-warm-dark);
   margin-bottom: 1.5rem;
   font-size: 1.75rem;
   letter-spacing: -0.02em;
+  font-weight: 700;
 }
 
 .settings-section {
   background: white;
   padding: 1.5rem;
-  border-radius: 12px;
+  border-radius: 16px;
   margin-bottom: 1.5rem;
-  border: 1px solid #eee;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(239, 129, 40, 0.08);
+  box-shadow: 0 4px 16px rgba(61, 58, 53, 0.06);
 }
 
 .settings-section h2 {
-  color: #333;
+  color: var(--color-warm-dark);
   font-size: 1.15rem;
   margin-bottom: 0.5rem;
+  font-weight: 700;
 }
 
 .settings-description {
-  color: #666;
+  color: var(--color-warm-grey);
   font-size: 0.95rem;
   margin-bottom: 1.25rem;
   line-height: 1.45;
@@ -49,17 +70,20 @@
 }
 
 .settings-danger .button-danger {
-  background: #fff;
+  background: white;
   color: #b42318;
   border: 1px solid #f4c6c6;
   padding: 0.7rem 1.2rem;
-  border-radius: 10px;
+  border-radius: 14px;
   font-weight: 600;
   cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
 }
 
-.settings-danger .button-danger:hover {
+.settings-danger .button-danger:hover:not(:disabled) {
   background: #fff5f5;
+  transform: translateY(-1px);
 }
 
 .settings-danger .button-danger:disabled {
@@ -70,13 +94,74 @@
 .button-link {
   background: none;
   border: none;
-  color: #666;
+  color: var(--color-warm-grey);
   cursor: pointer;
   text-decoration: none;
   font-size: 0.95rem;
   padding: 0;
+  font-family: inherit;
 }
 
 .button-link:hover {
-  color: #333;
+  color: var(--color-warm-dark);
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--color-warm-dark);
+  font-weight: 600;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 2px solid rgba(239, 129, 40, 0.15);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(239, 129, 40, 0.1);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1.2rem;
+  border-radius: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button-primary {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 129, 40, 0.25);
+}
+
+.button-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(239, 129, 40, 0.35);
 }

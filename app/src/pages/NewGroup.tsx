@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Header } from '../components/Header';
 import { apiRequest } from '../lib/api';
 import './GroupForm.css';
 
@@ -67,6 +68,7 @@ export function NewGroup() {
 
 	return (
 		<div className="group-form-page">
+			<Header />
 			<div className="container">
 				<h1>Create New Group</h1>
 				<form

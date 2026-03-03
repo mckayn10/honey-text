@@ -1,55 +1,29 @@
 import { Link } from 'react-router-dom';
+import { Header } from '../components/Header';
 import './Landing.css';
 
 export function Landing() {
 	return (
 		<div className="landing">
-			<header className="landing-header">
-				<div className="container">
-					<div className="logo-container">
-						<img
-							src="/logo.png"
-							alt="HoneyText"
-							className="logo-image"
-						/>
-					</div>
-					<nav>
-						<Link
-							to="/login"
-							className="nav-link"
-						>
-							Log in
-						</Link>
-						<Link
-							to="/signup"
-							className="nav-link button-primary"
-						>
-							Sign up
-						</Link>
-					</nav>
-				</div>
-			</header>
+			<Header />
 
 			<main className="landing-main">
 				<div className="container">
 					<div className="hero">
-						{/* <img
-							src="/logo.png"
-							alt="HoneyText"
-							className="hero-logo"
-						/> */}
-						<h2>Weekly questions that bring you closer</h2>
+						<p className="tagline">Little questions. Deeper connections.</p>
+						<h1>Tiny texts that mean a lot</h1>
 						<p className="hero-subtitle">
-							Send thoughtful questions to your group every week
-							via text message. Perfect for couples, families,
-							siblings, and friends.
+							A weekly nudge to grow closer. Send thoughtful questions to
+							your partner, family, or friends via text message.
 						</p>
-						<Link
-							to="/signup"
-							className="button button-primary button-large"
-						>
-							Get Started
-						</Link>
+						<div className="cta-group">
+							<Link
+								to="/signup"
+								className="button button-primary button-large"
+							>
+								Start connecting 💛
+							</Link>
+						</div>
 					</div>
 				</div>
 			</main>

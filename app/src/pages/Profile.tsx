@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Header } from '../components/Header';
 import { apiRequest } from '../lib/api';
 import './Profile.css';
 
@@ -61,11 +62,17 @@ export function Profile() {
 	};
 
 	if (loading) {
-		return <div className="profile-page">Loading...</div>;
+		return (
+			<div className="profile-page">
+				<Header />
+				<div className="container">Loading...</div>
+			</div>
+		);
 	}
 
 	return (
 		<div className="profile-page">
+			<Header />
 			<div className="container">
 				<button
 					onClick={() => navigate('/app/groups')}

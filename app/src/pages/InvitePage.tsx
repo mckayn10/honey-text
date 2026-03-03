@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { Header } from '../components/Header';
 import { publicApiRequest } from '../lib/api';
 import './InvitePage.css';
 
@@ -56,6 +57,7 @@ export function InvitePage() {
 	if (loading) {
 		return (
 			<div className="invite-page">
+				<Header />
 				<div className="invite-container">Loading...</div>
 			</div>
 		);
@@ -64,6 +66,7 @@ export function InvitePage() {
 	if (error && !invite) {
 		return (
 			<div className="invite-page">
+				<Header />
 				<div className="invite-container">
 					<div className="error">{error}</div>
 				</div>
@@ -74,6 +77,7 @@ export function InvitePage() {
 	if (accepted) {
 		return (
 			<div className="invite-page">
+				<Header />
 				<div className="invite-container">
 					<div className="success">
 						<h1>You're in!</h1>
@@ -89,6 +93,7 @@ export function InvitePage() {
 
 	return (
 		<div className="invite-page">
+			<Header />
 			<div className="invite-container">
 				<h1>You're Invited!</h1>
 				<div className="invite-details">

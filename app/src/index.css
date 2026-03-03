@@ -1,6 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+
 :root {
   --color-primary: #EF8128;
-  --color-cream: #FAF2E2;
+  --color-cream: #FFF8EE;
+  --color-cream-alt: #FFF6E8;
+  --color-warm-dark: #3D3A35;
+  --color-warm-grey: #5C5852;
+  --color-warm-light: #8A8580;
   --color-gradient-top: #FFD76B;
   --color-gradient-bottom: #F7A626;
   --color-white: #FFFFFF;
@@ -13,13 +19,12 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: white;
-  color: #333;
+  background-color: var(--color-cream);
+  color: var(--color-warm-dark);
+  line-height: 1.7;
 }
 
 #root {

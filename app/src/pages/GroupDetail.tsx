@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Header } from '../components/Header';
 import { apiRequest } from '../lib/api';
 import './GroupDetail.css';
 
@@ -129,15 +130,26 @@ export function GroupDetail() {
 	};
 
 	if (loading) {
-		return <div className="group-detail">Loading...</div>;
+		return (
+			<div className="group-detail">
+				<Header />
+				<div className="container">Loading...</div>
+			</div>
+		);
 	}
 
 	if (!group) {
-		return <div className="group-detail">Group not found</div>;
+		return (
+			<div className="group-detail">
+				<Header />
+				<div className="container">Group not found</div>
+			</div>
+		);
 	}
 
 	return (
 		<div className="group-detail">
+			<Header />
 			<div className="container">
 				<div className="group-header-row">
 					<button

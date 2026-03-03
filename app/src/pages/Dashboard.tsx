@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { Header } from '../components/Header';
 import { apiRequest } from '../lib/api';
 import './Dashboard.css';
 
@@ -18,7 +17,6 @@ interface Group {
 export function Dashboard() {
 	const [groups, setGroups] = useState<Group[]>([]);
 	const [loading, setLoading] = useState(true);
-	const navigate = useNavigate();
 
 	useEffect(() => {
 		loadGroups();
@@ -35,43 +33,20 @@ export function Dashboard() {
 		}
 	};
 
-	const handleLogout = async () => {
-		await supabase.auth.signOut();
-		navigate('/');
-	};
-
 	if (loading) {
-		return <div className="dashboard">Loading...</div>;
+		return (
+			<div className="dashboard">
+				<Header />
+				<main className="dashboard-main">
+					<div className="container">Loading...</div>
+				</main>
+			</div>
+		);
 	}
 
 	return (
 		<div className="dashboard">
-			<header className="dashboard-header">
-				<div className="container">
-					<div className="logo-container">
-						<img
-							src="/logo.png"
-							alt="HoneyText"
-							className="logo-image"
-						/>
-					</div>
-					<div className="header-actions">
-						<Link
-							to="/app/profile"
-							className="button-link"
-						>
-							Profile
-						</Link>
-						<button
-							onClick={handleLogout}
-							className="button-link"
-						>
-							Log out
-						</button>
-					</div>
-				</div>
-			</header>
-
+			<Header />
 			<main
 				className={`dashboard-main ${groups.length === 0 ? 'dashboard-main--empty' : ''}`}
 			>
