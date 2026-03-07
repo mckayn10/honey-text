@@ -7,6 +7,7 @@ import { NewGroup } from './pages/NewGroup';
 import { GroupDetail } from './pages/GroupDetail';
 import { GroupSettings } from './pages/GroupSettings';
 import { InvitePage } from './pages/InvitePage';
+import { DemoInvitePage } from './pages/DemoInvitePage';
 import { Privacy } from './pages/Privacy';
 import { Terms } from './pages/Terms';
 import { Profile } from './pages/Profile';
@@ -89,6 +90,10 @@ function App() {
 				<Route
 					path="/invite/:token"
 					element={<InvitePage />}
+				/>
+				<Route
+					path="/demo-invite"
+					element={<DemoInvitePage />}
 				/>
 				<Route path="/privacy" element={<Privacy />} />
 				<Route path="/terms" element={<Terms />} />
