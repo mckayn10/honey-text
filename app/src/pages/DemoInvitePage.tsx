@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Loading } from '../components';
+import { Button } from '../components';
 import { theme } from '../theme';
 
 // Honeycomb pattern SVG (same as InvitePage)
