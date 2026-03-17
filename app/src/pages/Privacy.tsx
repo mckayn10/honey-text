@@ -65,7 +65,7 @@ export function Privacy() {
 
 				<h2 style={headingStyle}>3. Sharing of information</h2>
 				<p style={pStyle}>
-					We do not sell your personal information. We do not share your information with third parties for their marketing purposes. We may share information only as needed to operate the service (e.g. with our SMS and hosting providers under strict agreements) or when required by law.
+					We do not sell your personal information. We do not share your information with third parties for their marketing or promotional purposes. No mobile information, including phone numbers collected as part of the SMS opt-in process, will be shared with third parties or affiliates for marketing or promotional purposes at any time. We may share information only as needed to operate the service (e.g. with our SMS and hosting providers under strict data processing agreements) or when required by law.
 				</p>
 
 				<h2 style={headingStyle}>4. Data retention and security</h2>
@@ -80,7 +80,7 @@ export function Privacy() {
 
 				<h2 style={headingStyle}>6. Contact</h2>
 				<p style={pStyle}>
-					For privacy questions or requests, contact us at the support email or address listed in our Terms and Conditions.
+					For privacy questions or requests, contact us at <a href="mailto:honeytexting@gmail.com" style={{ color: theme.primary }}>honeytexting@gmail.com</a>.
 				</p>
 			</div>
 		</div>

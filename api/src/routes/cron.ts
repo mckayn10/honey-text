@@ -73,9 +73,10 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
             if (!group.conversation_sid) continue
 
             const authorIdentity = `honeytext-${group.id}`
+            const formattedBody = `This week's question for ${group.name}: ${question.body}`
             const messageResult = await sendConversationMessage(
               group.conversation_sid,
-              question.body,
+              formattedBody,
               authorIdentity
             )
 
@@ -92,7 +93,7 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
                 group_id: group.id,
                 conversation_sid: group.conversation_sid,
                 author: 'honeytext',
-                body: question.body,
+                body: formattedBody,
                 direction: 'outbound',
               })
             await supabaseAdmin

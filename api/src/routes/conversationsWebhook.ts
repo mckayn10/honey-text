@@ -123,7 +123,7 @@ router.post('/conversations/webhook', async (req, res) => {
           console.error('[webhook] ensureGroupConversation (owner-only) failed:', err)
         }
         try {
-          await sendSMS(fromE164, `HoneyText: Your group "${group?.name ?? 'Group'}" is now active! Add members and start receiving weekly questions. Reply HELP for help. Reply STOP to opt out.`)
+          await sendSMS(fromE164, `HoneyText: Your group "${group?.name ?? 'Group'}" is now active! You'll receive weekly discussion questions via text. Msg & data rates may apply. Reply STOP to opt out. Reply HELP for help.`)
         } catch (err) {
           console.error('[webhook] owner confirm SMS failed:', err)
         }
@@ -145,7 +145,7 @@ router.post('/conversations/webhook', async (req, res) => {
         }
         const groupName = group?.name ?? 'the group'
         try {
-          await sendSMS(fromE164, `HoneyText: You're in! You've joined ${groupName}. You'll receive weekly questions via text. Reply HELP for help. Reply STOP to opt out.`)
+          await sendSMS(fromE164, `HoneyText: Welcome! You've joined ${groupName}. You'll receive weekly discussion questions via text. Msg & data rates may apply. Reply STOP to opt out. Reply HELP for help.`)
         } catch (err) {
           console.error('[webhook] confirm SMS failed:', err)
         }

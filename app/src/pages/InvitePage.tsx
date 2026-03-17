@@ -38,12 +38,22 @@ const containerStyle: React.CSSProperties = {
 	zIndex: 1,
 };
 
+const disclosureBoxStyle: React.CSSProperties = {
+	background: '#FFFDF8',
+	border: `1px solid #F0E6DA`,
+	padding: '1.25rem',
+	borderRadius: 8,
+	marginTop: '1.5rem',
+	textAlign: 'left',
+};
+
 export function InvitePage() {
 	const { token } = useParams<{ token: string }>();
 	const [invite, setInvite] = useState<InviteData | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [accepting, setAccepting] = useState(false);
 	const [accepted, setAccepted] = useState(false);
+	const [consented, setConsented] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -102,9 +112,12 @@ export function InvitePage() {
 			<div style={pageStyle}>
 				<div style={containerStyle}>
 					<div>
-						<h1 style={{ color: theme.primary, marginBottom: '1rem' }}>You're in!</h1>
-						<p style={{ color: theme.text }}>
-							You've been added to {invite?.group_name}. You'll start receiving weekly questions via text message.
+						<h1 style={{ color: theme.primary, marginBottom: '1rem' }}>Welcome to HoneyText!</h1>
+						<p style={{ color: theme.text, marginBottom: '1.5rem' }}>
+							You've been added to <strong>{invite?.group_name}</strong>. You'll receive weekly discussion questions via text message.
+						</p>
+						<p style={{ color: theme.textMuted, fontSize: '0.9rem', lineHeight: 1.6 }}>
+							Reply <strong>STOP</strong> to opt out. Reply <strong>HELP</strong> for help. Msg & data rates may apply.
 						</p>
 					</div>
 				</div>
@@ -132,12 +145,46 @@ export function InvitePage() {
 						</p>
 					</div>
 					<p style={{ marginTop: '1rem', color: theme.textMuted, fontSize: '0.9rem' }}>
-						Please confirm this information is correct, then click Accept.
+						Please confirm this information is correct, then accept below.
 					</p>
 
-					<p style={{ marginTop: '1.25rem', fontSize: '0.8rem', color: theme.textMuted, lineHeight: 1.5 }}>
-						By clicking Accept Invitation, you consent to receive text messages from HoneyText for this group (weekly discussion questions and related updates). Consent is not a condition of purchase. Msg & data rates may apply. Message frequency: about one message per week per group, plus occasional transactional messages. Reply <strong>STOP</strong> to opt out or <strong>HELP</strong> for help. <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: theme.primary }}>Privacy Policy</a> & <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: theme.primary }}>Terms</a>.
-					</p>
+					<div style={disclosureBoxStyle}>
+						<h3 style={{ marginTop: 0, marginBottom: '0.75rem', color: theme.text, fontSize: '1rem' }}>
+							SMS Consent Disclosure
+						</h3>
+						<p style={{ marginBottom: '0.75rem', color: theme.textMuted, fontSize: '0.9rem', lineHeight: 1.6 }}>
+							By checking the box and clicking <strong>"Accept Invitation"</strong>, you consent to receive text messages from <strong>HoneyText</strong> for this group.
+						</p>
+						<ul style={{ marginBottom: '1rem', color: theme.textMuted, fontSize: '0.85rem', lineHeight: 1.6, paddingLeft: '1.25rem' }}>
+							<li><strong>Message Content:</strong> Weekly discussion questions and related group updates</li>
+							<li><strong>Message Frequency:</strong> About one message per week per group, plus occasional transactional messages</li>
+							<li><strong>Consent:</strong> Not a condition of purchase</li>
+							<li><strong>Cost:</strong> Msg & data rates may apply</li>
+							<li><strong>Opt-out:</strong> Reply <strong>STOP</strong> to opt out at any time</li>
+							<li><strong>Help:</strong> Reply <strong>HELP</strong> for assistance</li>
+						</ul>
+						<p style={{ marginBottom: 0, color: theme.textMuted, fontSize: '0.85rem' }}>
+							<a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: theme.primary }}>
+								Privacy Policy
+							</a>
+							{' & '}
+							<a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: theme.primary }}>
+								Terms of Service
+							</a>
+						</p>
+					</div>
+
+					<label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginTop: '1.25rem', cursor: 'pointer', textAlign: 'left' }}>
+						<input
+							type="checkbox"
+							checked={consented}
+							onChange={(e) => setConsented(e.target.checked)}
+							style={{ marginTop: '0.2rem', width: 18, height: 18, accentColor: theme.primary, flexShrink: 0 }}
+						/>
+						<span style={{ color: theme.text, fontSize: '0.9rem', lineHeight: 1.5 }}>
+							I agree to receive text messages from HoneyText as described above. Msg & data rates may apply.
+						</span>
+					</label>
 				</div>
 
 				{error && (
@@ -150,8 +197,8 @@ export function InvitePage() {
 					type="button"
 					variant="primary"
 					onClick={handleAccept}
-					disabled={accepting}
-					style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }}
+					disabled={accepting || !consented}
+					style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', marginTop: '1rem' }}
 				>
 					{accepting ? 'Accepting...' : 'Accept Invitation'}
 				</Button>

@@ -123,7 +123,7 @@ router.post('/', async (req: AuthRequest, res) => {
     })
 
     const smsBody =
-      `HoneyText: Reply YES ${acceptCode} to create your group "${name}". You'll get weekly discussion questions via text. Msg & data rates may apply. Reply STOP to opt out, HELP for help.`
+      `HoneyText: Reply YES ${acceptCode} to activate your group "${name}". You'll receive weekly discussion questions via text. Msg & data rates may apply. Reply STOP to opt out, HELP for help.`
     try {
       await sendSMS(ownerPhone, smsBody)
     } catch (err: any) {
@@ -370,7 +370,7 @@ router.post('/:id/invites', async (req: AuthRequest, res) => {
     const origin = process.env.CORS_ORIGIN || 'http://localhost:3000'
     const inviteUrl = `${origin}/invite/${token}`
     const smsBody =
-      `HoneyText: You're invited to ${group.name}. You'll get weekly discussion questions via text. Msg & data rates may apply. Reply YES ${acceptCode} to join. Reply STOP to opt out, HELP for help. ` +
+      `HoneyText: You're invited to ${group.name}! You'll get weekly discussion questions via text. Msg & data rates may apply. Reply YES ${acceptCode} to join. Reply STOP to opt out, HELP for help. ` +
       inviteUrl
 
     try {

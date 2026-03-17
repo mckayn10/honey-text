@@ -221,8 +221,102 @@ export function Landing() {
 								Start connecting 💛
 							</Link>
 						</div>
+
+						{/* How it works */}
+						<div
+							style={{
+								marginTop: '5rem',
+								display: 'grid',
+								gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+								gap: '2rem',
+								textAlign: 'center',
+							}}
+						>
+							{[
+								{ step: '1', title: 'Create a group', desc: 'Name your group and add members by phone number.' },
+								{ step: '2', title: 'Invite via text', desc: 'Members get an SMS or web invite with opt-in disclosure.' },
+								{ step: '3', title: 'Weekly questions', desc: 'Each week, a discussion question is sent to the group via text message.' },
+							].map((item) => (
+								<div key={item.step} style={{ padding: '1.5rem' }}>
+									<div
+										style={{
+											width: 48,
+											height: 48,
+											borderRadius: '50%',
+											backgroundColor: theme.primary,
+											color: 'white',
+											display: 'inline-flex',
+											alignItems: 'center',
+											justifyContent: 'center',
+											fontWeight: 700,
+											fontSize: '1.25rem',
+											marginBottom: '1rem',
+										}}
+									>
+										{item.step}
+									</div>
+									<h3 style={{ color: theme.text, marginBottom: '0.5rem', fontSize: '1.1rem' }}>
+										{item.title}
+									</h3>
+									<p style={{ color: theme.textMuted, fontSize: '0.95rem', lineHeight: 1.6 }}>
+										{item.desc}
+									</p>
+								</div>
+							))}
+						</div>
+
+						{/* SMS program summary */}
+						<div
+							style={{
+								marginTop: '3rem',
+								padding: '2rem',
+								background: 'white',
+								borderRadius: 16,
+								boxShadow: theme.shadow,
+								textAlign: 'left',
+								maxWidth: 600,
+								marginLeft: 'auto',
+								marginRight: 'auto',
+							}}
+						>
+							<h3 style={{ color: theme.text, marginBottom: '0.75rem', fontSize: '1.1rem' }}>
+								About our text messaging service
+							</h3>
+							<p style={{ color: theme.textMuted, fontSize: '0.9rem', lineHeight: 1.7, marginBottom: '0.75rem' }}>
+								HoneyText sends weekly discussion questions and group updates via SMS to members who have opted in. We do not send marketing or promotional messages. Message and data rates may apply. Message frequency is about one per week per group, plus occasional transactional messages.
+							</p>
+							<p style={{ color: theme.textMuted, fontSize: '0.9rem', lineHeight: 1.7, margin: 0 }}>
+								Reply <strong>STOP</strong> to opt out at any time. Reply <strong>HELP</strong> for assistance. For questions, contact <a href="mailto:honeytexting@gmail.com" style={{ color: theme.primary }}>honeytexting@gmail.com</a>.
+							</p>
+						</div>
 					</Container>
 				</main>
+
+				{/* Footer */}
+				<footer
+					style={{
+						borderTop: `1px solid ${theme.headerBorder}`,
+						padding: '2rem 0',
+						textAlign: 'center',
+					}}
+				>
+					<Container maxWidth="wide">
+						<div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+							<Link to="/privacy" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: '0.9rem' }}>
+								Privacy Policy
+							</Link>
+							<Link to="/terms" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: '0.9rem' }}>
+								Terms and Conditions
+							</Link>
+							<a href="mailto:honeytexting@gmail.com" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: '0.9rem' }}>
+								Contact
+							</a>
+						</div>
+						<p style={{ color: theme.textLight, fontSize: '0.85rem', margin: 0 }}>
+							&copy; {new Date().getFullYear()} HoneyText. All rights reserved.
+						</p>
+					</Container>
+				</footer>
 			</div>
 		</div>
 	);

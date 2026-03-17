@@ -72,6 +72,7 @@ const linkStyle: React.CSSProperties = {
 export function DemoInvitePage() {
 	const [accepting, setAccepting] = useState(false);
 	const [accepted, setAccepted] = useState(false);
+	const [consented, setConsented] = useState(false);
 
 	const handleAccept = async () => {
 		setAccepting(true);
@@ -88,7 +89,7 @@ export function DemoInvitePage() {
 					<div style={badgeStyle}>DEMO</div>
 					<h1 style={{ color: theme.primary, marginBottom: '1rem' }}>Welcome to HoneyText!</h1>
 					<p style={{ color: theme.text, marginBottom: '1.5rem' }}>
-						You are now subscribed to receive weekly discussion questions for <strong>{DEMO_INVITE.group_name}</strong>.
+						You've joined <strong>{DEMO_INVITE.group_name}</strong>. You'll receive weekly discussion questions via text message.
 					</p>
 					<p style={{ color: theme.textMuted, fontSize: '0.9rem', lineHeight: 1.6 }}>
 						Reply <strong>STOP</strong> to opt out. Reply <strong>HELP</strong> for help. Msg & data rates may apply.
@@ -137,7 +138,7 @@ export function DemoInvitePage() {
 							SMS Consent Disclosure
 						</h3>
 						<p style={{ marginBottom: '0.75rem', color: theme.textMuted, fontSize: '0.9rem', lineHeight: 1.6 }}>
-							By clicking <strong>"Accept Invitation"</strong>, you consent to receive text messages from <strong>HoneyText</strong> for this group.
+							By checking the box and clicking <strong>"Accept Invitation"</strong>, you consent to receive text messages from <strong>HoneyText</strong> for this group.
 						</p>
 						<ul style={{ marginBottom: '1rem', color: theme.textMuted, fontSize: '0.85rem', lineHeight: 1.6, paddingLeft: '1.25rem' }}>
 							<li><strong>Message Content:</strong> Weekly discussion questions and related group updates</li>
@@ -159,11 +160,23 @@ export function DemoInvitePage() {
 					</div>
 				</div>
 
+				<label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.25rem', cursor: 'pointer', textAlign: 'left' }}>
+					<input
+						type="checkbox"
+						checked={consented}
+						onChange={(e) => setConsented(e.target.checked)}
+						style={{ marginTop: '0.2rem', width: 18, height: 18, accentColor: theme.primary, flexShrink: 0 }}
+					/>
+					<span style={{ color: theme.text, fontSize: '0.9rem', lineHeight: 1.5 }}>
+						I agree to receive text messages from HoneyText as described above. Msg & data rates may apply.
+					</span>
+				</label>
+
 				<Button
 					type="button"
 					variant="primary"
 					onClick={handleAccept}
-					disabled={accepting}
+					disabled={accepting || !consented}
 					style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }}
 				>
 					{accepting ? 'Accepting...' : 'Accept Invitation'}
