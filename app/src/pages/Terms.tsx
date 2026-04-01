@@ -55,7 +55,7 @@ export function Terms() {
 					<strong>Message frequency:</strong> Message frequency varies. You typically receive about one text message per week per group (the weekly discussion question), plus occasional transactional messages (e.g. invite confirmations, join confirmations). You will not receive marketing or promotional texts.
 				</p>
 				<p style={pStyle}>
-					<strong>Support contact:</strong> For help with the program or your account, contact us at <a href="mailto:honeytexting@gmail.com" style={{ color: theme.primary }}>honeytexting@gmail.com</a>.
+					<strong>Support contact:</strong> For help with the program or your account, contact us at <a href="mailto:admin@honey-texting.app" style={{ color: theme.primary }}>admin@honey-texting.app</a>.
 				</p>
 				<p style={pStyle}>
 					<strong>Opt-out instructions:</strong> You can opt out of text messages at any time. Reply <strong>STOP</strong> to any message to unsubscribe from messages for that number. Reply <strong>HELP</strong> for help or to get support contact information. After you reply STOP, you will receive a final confirmation message and will not receive further messages until you opt back in (e.g. by joining a group again). You can also be removed from a group by the group owner, which stops messages for that group.

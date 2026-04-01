@@ -286,7 +286,7 @@ export function Landing() {
 								HoneyText sends weekly discussion questions and group updates via SMS to members who have opted in. We do not send marketing or promotional messages. Message and data rates may apply. Message frequency is about one per week per group, plus occasional transactional messages.
 							</p>
 							<p style={{ color: theme.textMuted, fontSize: '0.9rem', lineHeight: 1.7, margin: 0 }}>
-								Reply <strong>STOP</strong> to opt out at any time. Reply <strong>HELP</strong> for assistance. For questions, contact <a href="mailto:honeytexting@gmail.com" style={{ color: theme.primary }}>honeytexting@gmail.com</a>.
+								Reply <strong>STOP</strong> to opt out at any time. Reply <strong>HELP</strong> for assistance. For questions, contact <a href="mailto:admin@honey-texting.app" style={{ color: theme.primary }}>admin@honey-texting.app</a>.
 							</p>
 						</div>
 					</Container>
@@ -308,12 +308,12 @@ export function Landing() {
 							<Link to="/terms" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: '0.9rem' }}>
 								Terms and Conditions
 							</Link>
-							<a href="mailto:honeytexting@gmail.com" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: '0.9rem' }}>
+							<a href="mailto:admin@honey-texting.app" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: '0.9rem' }}>
 								Contact
 							</a>
 						</div>
 						<p style={{ color: theme.textLight, fontSize: '0.85rem', margin: 0 }}>
-							&copy; {new Date().getFullYear()} HoneyText. All rights reserved.
+							&copy; {new Date().getFullYear()} Honey Text LLC. All rights reserved.
 						</p>
 					</Container>
 				</footer>

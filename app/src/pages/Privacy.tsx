@@ -80,7 +80,7 @@ export function Privacy() {
 
 				<h2 style={headingStyle}>6. Contact</h2>
 				<p style={pStyle}>
-					For privacy questions or requests, contact us at <a href="mailto:honeytexting@gmail.com" style={{ color: theme.primary }}>honeytexting@gmail.com</a>.
+					For privacy questions or requests, contact us at <a href="mailto:admin@honey-texting.app" style={{ color: theme.primary }}>admin@honey-texting.app</a>.
 				</p>
 			</div>
 		</div>
