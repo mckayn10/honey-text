@@ -1,7 +1,7 @@
 import express from 'express'
 import { authenticateCron } from '../middleware/cronAuth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
-import { sendConversationMessage } from '../lib/twilio.js'
+import { ensureConversationMessagingServiceSid, sendConversationMessage } from '../lib/twilio.js'
 import { DateTime } from 'luxon'
 
 const router = express.Router()
@@ -110,6 +110,15 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
         if (!group.conversation_sid) {
           noteSkip(group, 'no conversation_sid (Conversation not created yet)')
           continue
+        }
+
+        try {
+          await ensureConversationMessagingServiceSid(group.conversation_sid)
+        } catch (bindErr: any) {
+          console.error(
+            `[cron] ensureConversationMessagingServiceSid failed for group ${group.id}:`,
+            bindErr?.message || bindErr
+          )
         }
 
         const questionIndex = sendState.last_question_index % questions.length

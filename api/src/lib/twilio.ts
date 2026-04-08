@@ -96,7 +96,50 @@ export async function createConversation(friendlyName: string) {
       '[twilio] TWILIO_MESSAGING_SERVICE_SID is set but invalid (expected MG + 32 hex). Ignoring.'
     )
   }
-  return client.conversations.v1.conversations.create(params)
+  const created = await client.conversations.v1.conversations.create(params)
+  if (messagingServiceSid && MG_SID_REGEX.test(messagingServiceSid)) {
+    const bound = (created as { messagingServiceSid?: string }).messagingServiceSid
+    if (!bound) {
+      console.warn(
+        `[twilio] Conversation ${created.sid} created without messagingServiceSid in response; binding with update.`
+      )
+      await client.conversations.v1.conversations(created.sid).update({
+        messagingServiceSid,
+      })
+    }
+  }
+  return created
+}
+
+/**
+ * If TWILIO_MESSAGING_SERVICE_SID is set, ensure the Twilio Conversation is bound to it.
+ * Conversations created before this env var existed (or before the API loaded it) stay
+ * unbound otherwise, and Group MMS may fall back to separate 1:1 SMS.
+ */
+export async function ensureConversationMessagingServiceSid(conversationSid: string): Promise<void> {
+  const client = getTwilioClient()
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID?.trim()
+  if (!messagingServiceSid || !MG_SID_REGEX.test(messagingServiceSid)) {
+    return
+  }
+
+  const conv = await client.conversations.v1.conversations(conversationSid).fetch()
+  const current = (conv as { messagingServiceSid?: string | null }).messagingServiceSid || null
+  if (current === messagingServiceSid) return
+
+  if (current) {
+    console.warn(
+      `[twilio] Conversation ${conversationSid} is bound to messaging service ${current}; env has ${messagingServiceSid}. Not overwriting.`
+    )
+    return
+  }
+
+  await client.conversations.v1.conversations(conversationSid).update({
+    messagingServiceSid,
+  })
+  console.log(
+    `[twilio] Bound conversation ${conversationSid} to messaging service ${messagingServiceSid} (was unbound).`
+  )
 }
 
 export async function addProjectedParticipant(conversationSid: string, identity: string) {

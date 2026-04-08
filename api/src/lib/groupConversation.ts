@@ -1,5 +1,11 @@
 import { supabaseAdmin } from './supabase.js'
-import { createConversation, addProjectedParticipant, addSmsParticipant, toE164 } from './twilio.js'
+import {
+  createConversation,
+  addProjectedParticipant,
+  addSmsParticipant,
+  ensureConversationMessagingServiceSid,
+  toE164,
+} from './twilio.js'
 
 /**
  * Get the set of E.164 phone numbers for a group (owner + all confirmed members).
@@ -68,7 +74,17 @@ export async function ensureGroupConversation(groupId: string): Promise<string |
     .single()
 
   if (groupError || !group) return null
-  if (group.conversation_sid) return group.conversation_sid
+  if (group.conversation_sid) {
+    try {
+      await ensureConversationMessagingServiceSid(group.conversation_sid)
+    } catch (err) {
+      console.error(
+        '[groupConversation] ensureConversationMessagingServiceSid failed:',
+        (err as Error)?.message || err
+      )
+    }
+    return group.conversation_sid
+  }
 
   const memberPhones = await getGroupMemberPhones(groupId)
   if (memberPhones.size === 0) return null
