@@ -129,7 +129,7 @@ export function GroupDetail() {
 			loadGroup();
 			const code = data.accept_code ?? '';
 			alert(
-				`Invite sent by SMS to ${formatPhoneForDisplay(data.invitee_phone)}. They can reply "YES ${code}" to join (no internet needed), or open this link when they have internet: ${data.inviteUrl}`,
+				`Invite sent by SMS to ${formatPhoneForDisplay(data.invitee_phone)}. The message asks them to reply exactly "YES ${code}". To invite via the web instead, share this link: ${data.inviteUrl}`,
 			);
 		} catch (err: any) {
 			setError(err.message || 'Failed to create invite');

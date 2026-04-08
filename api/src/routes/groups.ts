@@ -370,14 +370,13 @@ router.post('/:id/invites', async (req: AuthRequest, res) => {
     const origin = process.env.CORS_ORIGIN || 'http://localhost:3000'
     const inviteUrl = `${origin}/invite/${token}`
     const smsBody =
-      `HoneyText: You're invited to ${group.name}! You'll get weekly discussion questions via text. Msg & data rates may apply. Reply YES ${acceptCode} to join. Reply STOP to opt out, HELP for help. ` +
-      inviteUrl
+      `HoneyText: You're invited to ${group.name}! You'll get weekly discussion questions via text. Msg & data rates may apply. To join, reply exactly: "YES ${acceptCode}". Reply STOP to opt out, HELP for help.`
 
     try {
       await sendSMS(normalizedPhone, smsBody)
     } catch (err: any) {
       console.error('Failed to send invite SMS:', err?.message || err)
-      // Invite is still created; they can use the link
+      // Invite is still created; group owner can share inviteUrl from the app
     }
 
     res.json({
