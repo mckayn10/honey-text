@@ -1,7 +1,7 @@
 import express from 'express'
 import { authenticateUser, AuthRequest } from '../middleware/auth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
-import { addSmsParticipant } from '../lib/twilio.js'
+import { addSmsParticipant, isStaleTwilioConversationError } from '../lib/twilio.js'
 import { ensureGroupConversation } from '../lib/groupConversation.js'
 
 const router = express.Router()
@@ -92,12 +92,31 @@ router.patch('/me', async (req: AuthRequest, res) => {
         for (const group of groups || []) {
           if (existingParticipantGroups.has(group.id)) continue
           if (group.conversation_sid) {
-            const participant = await addSmsParticipant(group.conversation_sid, updatedUser.phone)
-            await supabaseAdmin
-              .from('group_members')
-              .update({ participant_sid: participant.sid, is_owner: true })
-              .eq('group_id', group.id)
-              .eq('phone', updatedUser.phone)
+            try {
+              const participant = await addSmsParticipant(group.conversation_sid, updatedUser.phone)
+              await supabaseAdmin
+                .from('group_members')
+                .update({ participant_sid: participant.sid, is_owner: true })
+                .eq('group_id', group.id)
+                .eq('phone', updatedUser.phone)
+            } catch (err: unknown) {
+              // Conversation SID from a different Twilio account/subaccount → recreate in current account
+              if (isStaleTwilioConversationError(err)) {
+                console.warn(
+                  '[users] Stale conversation_sid (e.g. after Twilio subaccount change), recreating:',
+                  group.conversation_sid
+                )
+                await supabaseAdmin.from('groups').update({ conversation_sid: null }).eq('id', group.id)
+                await supabaseAdmin.from('group_members').update({ participant_sid: null }).eq('group_id', group.id)
+                try {
+                  await ensureGroupConversation(group.id)
+                } catch (recreateErr) {
+                  console.error('[users] ensureGroupConversation after stale SID failed for group', group.id, recreateErr)
+                }
+              } else {
+                throw err
+              }
+            }
           } else {
             try {
               await ensureGroupConversation(group.id)

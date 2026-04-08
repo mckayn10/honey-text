@@ -18,6 +18,7 @@ Ensure your code is pushed to GitHub (or GitLab). Render will deploy from this r
     - `TWILIO_ACCOUNT_SID`
     - `TWILIO_AUTH_TOKEN`
     - `TWILIO_PHONE_NUMBER` (E.164, e.g. `+15551234567`)
+    - `TWILIO_MESSAGING_SERVICE_SID` (optional but **recommended** for Group MMS — the `MG…` SID of your A2P-linked Messaging Service; see [Group MMS thread](#group-mms-shows-as-separate-11-texts) below)
     - `CRON_SECRET` (pick a long random string; you’ll use it to call the cron endpoint)
     - `CORS_ORIGIN` (your frontend URL, e.g. `https://your-app.vercel.app` or `http://localhost:5173` for local dev)
     - **Stripe (production):** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_PREMIUM_PRICE_ID` — use **live** keys and a **live** webhook signing secret (see [Go live: Stripe](#go-live-stripe) below).
@@ -58,6 +59,15 @@ If the cron runs and your API sends the question, but **no one receives the text
 **Global webhooks** (Conversations → Global webhooks) are for receiving Conversation events (e.g. `onMessageAdded`). If you already receive inbound replies at your webhook from the number config, you don’t need to duplicate that here unless you want service-level logging.
 
 The same webhook also handles **invite accept via SMS**: when someone replies “YES &lt;code&gt;” from the invited phone number, the API adds them to the group and sends a confirmation. Ensure your phone number’s “A message comes in” webhook is set to the same URL.
+
+### Group MMS shows as separate 1:1 texts
+
+If each member gets their **own** thread with your Twilio number instead of **one shared group MMS**, the Conversation is probably not tied to your **Messaging Service**. Twilio’s [Conversation API](https://www.twilio.com/docs/conversations/api/conversation-resource) uses **`MessagingServiceSid`** (`MG…`) so SMS/MMS participants route as a single group thread.
+
+1. In **Messaging** → **Services**, open the Messaging Service linked to your **A2P campaign** (e.g. “Low Volume Mixed A2P Messaging Service”). Under **Sender pool**, add your **10DLC long code** if it is not already there.
+2. Copy that service’s SID (`MG…`).
+3. Set **`TWILIO_MESSAGING_SERVICE_SID`** to that value on the API (Render env or `api/.env`) and **redeploy** / restart.
+4. **Existing groups** were created without this binding. For each affected group: in Twilio **Conversations** delete the old Conversation (optional), in Supabase set `groups.conversation_sid` to `NULL` and `group_members.participant_sid` to `NULL` for that group, then open the group in the app and trigger **ensure conversation** (or recreate the group) so a **new** Conversation is created with the Messaging Service attached.
 
 ## 5. Cron: weekly questions
 
@@ -160,22 +170,22 @@ Before accepting real payments:
 3. **Live API keys**  
    Developers → API keys → use **Publishable** and **Secret** keys that start with `pk_live_` and `sk_live_`.
 
-4. **Production webhook**  
-   - Developers → Webhooks → Add endpoint  
-   - URL: `https://<your-api-url>/webhook`  
-   - Events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`  
-   - Copy the **Signing secret** (`whsec_...`) and set as `STRIPE_WEBHOOK_SECRET` in production (e.g. Render env).  
-   - **Note:** The webhook secret is different in Test vs Live; production must use the Live endpoint’s secret.
+4. **Production webhook**
+    - Developers → Webhooks → Add endpoint
+    - URL: `https://<your-api-url>/webhook`
+    - Events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
+    - Copy the **Signing secret** (`whsec_...`) and set as `STRIPE_WEBHOOK_SECRET` in production (e.g. Render env).
+    - **Note:** The webhook secret is different in Test vs Live; production must use the Live endpoint’s secret.
 
 5. **Env in production**  
    In Render (or your host), set:
-   - `STRIPE_SECRET_KEY` = live secret key  
-   - `STRIPE_WEBHOOK_SECRET` = live webhook signing secret  
-   - `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_PREMIUM_PRICE_ID` = live price IDs  
+    - `STRIPE_SECRET_KEY` = live secret key
+    - `STRIPE_WEBHOOK_SECRET` = live webhook signing secret
+    - `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_PREMIUM_PRICE_ID` = live price IDs
 
-   In your **frontend** build (e.g. Vercel), set:
-   - `VITE_STRIPE_PUBLISHABLE_KEY` = live publishable key  
-   - `VITE_API_URL` = your production API URL  
+    In your **frontend** build (e.g. Vercel), set:
+    - `VITE_STRIPE_PUBLISHABLE_KEY` = live publishable key
+    - `VITE_API_URL` = your production API URL
 
 6. **Customer portal (optional)**  
    Settings → Billing → Customer portal: configure branding and allowed actions (e.g. update payment method, cancel). The “Manage billing” button uses this.
@@ -191,5 +201,5 @@ Before accepting real payments:
 | -------------- | ---------------------------------------------------------------------------------------------------------------- |
 | API base       | `https://<service-name>.onrender.com`                                                                            |
 | Twilio webhook | `https://<service-name>.onrender.com/twilio/conversations/webhook`                                               |
-| Stripe webhook | `https://<service-name>.onrender.com/webhook`                                                                   |
+| Stripe webhook | `https://<service-name>.onrender.com/webhook`                                                                    |
 | Cron endpoint  | `POST https://<service-name>.onrender.com/cron/send-weekly-questions` with `Authorization: Bearer <CRON_SECRET>` |

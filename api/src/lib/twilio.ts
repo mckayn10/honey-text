@@ -76,9 +76,27 @@ export async function sendSMS(to: string, message: string) {
   }
 }
 
+const MG_SID_REGEX = /^MG[0-9a-f]{32}$/i
+
+/**
+ * Create a Twilio Conversation for Group MMS.
+ * Pass TWILIO_MESSAGING_SERVICE_SID (your A2P-linked Messaging Service, e.g. MG…) so SMS
+ * participants share one group thread; without it, Twilio may deliver as separate 1:1 SMS.
+ */
 export async function createConversation(friendlyName: string) {
   const client = getTwilioClient()
-  return client.conversations.v1.conversations.create({ friendlyName })
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID?.trim()
+  const params: { friendlyName: string; messagingServiceSid?: string } = {
+    friendlyName,
+  }
+  if (messagingServiceSid && MG_SID_REGEX.test(messagingServiceSid)) {
+    params.messagingServiceSid = messagingServiceSid
+  } else if (messagingServiceSid && !MG_SID_REGEX.test(messagingServiceSid)) {
+    console.warn(
+      '[twilio] TWILIO_MESSAGING_SERVICE_SID is set but invalid (expected MG + 32 hex). Ignoring.'
+    )
+  }
+  return client.conversations.v1.conversations.create(params)
 }
 
 export async function addProjectedParticipant(conversationSid: string, identity: string) {
@@ -90,6 +108,16 @@ export async function addProjectedParticipant(conversationSid: string, identity:
       identity,
       'messagingBinding.projectedAddress': projectedAddress,
     })
+}
+
+/** True when the Conversation SID is invalid in this Twilio account (e.g. after switching subaccounts). */
+export function isStaleTwilioConversationError(err: unknown): boolean {
+  const e = err as { code?: number; status?: number; message?: string }
+  // 20404 = Twilio REST "not found" for missing resource
+  if (e?.code === 20404 || e?.status === 404) return true
+  const msg = String(e?.message || '')
+  if (!/not found/i.test(msg)) return false
+  return /conversation|participant|Participants/i.test(msg)
 }
 
 export async function addSmsParticipant(conversationSid: string, phone: string) {
