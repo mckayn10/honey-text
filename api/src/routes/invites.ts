@@ -2,6 +2,7 @@ import express from 'express'
 import { supabaseAdmin } from '../lib/supabase.js'
 import { toE164 } from '../lib/twilio.js'
 import { ensureGroupConversation } from '../lib/groupConversation.js'
+import { sendMemberJoinedAnnouncement } from '../lib/groupAnnouncements.js'
 import { checkCanAddMemberToGroup } from '../lib/subscriptionLimits.js'
 
 const router = express.Router()
@@ -137,7 +138,12 @@ router.post('/:token/accept', async (req, res) => {
         is_owner: false,
       })
       await supabaseAdmin.from('groups').update({ status: 'active' }).eq('id', invite.group_id)
-      await ensureGroupConversation(invite.group_id)
+      const conversationSid = await ensureGroupConversation(invite.group_id)
+      try {
+        await sendMemberJoinedAnnouncement(invite.group_id, conversationSid, invite.invitee_name)
+      } catch (err) {
+        console.error('[invites] sendMemberJoinedAnnouncement failed:', err)
+      }
     }
 
     res.json({ message: 'Invite accepted successfully' })

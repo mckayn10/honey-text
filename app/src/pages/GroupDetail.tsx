@@ -37,6 +37,14 @@ interface MemberWithOwner extends Member {
 	isOwner?: boolean;
 }
 
+interface GroupMessage {
+	id: string;
+	body: string | null;
+	author: string | null;
+	direction: 'inbound' | 'outbound';
+	created_at: string;
+}
+
 interface UserProfile {
 	id: string;
 	email: string;
@@ -56,6 +64,13 @@ const listItemStyle: React.CSSProperties = {
 
 const sectionHeading: React.CSSProperties = { marginBottom: '1rem', color: theme.text };
 
+const messageRowStyle: React.CSSProperties = {
+	padding: '0.85rem 1rem',
+	background: theme.bgSubtle,
+	borderRadius: 10,
+	border: `1px solid ${theme.border}`,
+};
+
 export function GroupDetail() {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
@@ -70,6 +85,31 @@ export function GroupDetail() {
 	const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 	const [ensuringConversation, setEnsuringConversation] = useState(false);
 	const [conversationError, setConversationError] = useState<string | null>(null);
+	/** From POST /ensure-conversation: Twilio Group MMS needs a Messaging Service on the Conversation */
+	const [messagingHealth, setMessagingHealth] = useState<{
+		bound: boolean;
+		envConfigured: boolean;
+		matchesEnv: boolean;
+	} | null>(null);
+	const [messagingHealthCheckError, setMessagingHealthCheckError] = useState<string | null>(null);
+	const [threadMessages, setThreadMessages] = useState<GroupMessage[]>([]);
+
+	const applyEnsureConversationPayload = (data: unknown): boolean => {
+		const d = data as {
+			messaging_service_bound?: boolean;
+			messaging_service_env_configured?: boolean;
+			messaging_service_matches_env?: boolean;
+		};
+		if (typeof d.messaging_service_bound === 'boolean') {
+			setMessagingHealth({
+				bound: d.messaging_service_bound,
+				envConfigured: d.messaging_service_env_configured ?? false,
+				matchesEnv: d.messaging_service_matches_env ?? false,
+			});
+			return true;
+		}
+		return false;
+	};
 
 	useEffect(() => {
 		if (id) loadGroup();
@@ -83,16 +123,54 @@ export function GroupDetail() {
 		}
 		let cancelled = false;
 		setConversationError(null);
+		setMessagingHealth(null);
 		setEnsuringConversation(true);
 		apiRequest(`/groups/${id}/ensure-conversation`, { method: 'POST' })
-			.then(() => {
-				if (!cancelled) loadGroup();
+			.then((data) => {
+				if (!cancelled) {
+					const ok = applyEnsureConversationPayload(data);
+					if (!ok) {
+						setMessagingHealthCheckError(
+							'Could not verify Twilio Messaging Service binding. API response did not include messaging health fields.'
+						);
+					}
+					loadGroup();
+				}
 			})
 			.catch((err: { message?: string }) => {
 				if (!cancelled) setConversationError(err?.message ?? 'Could not set up messaging');
 			})
 			.finally(() => {
 				if (!cancelled) setEnsuringConversation(false);
+			});
+		return () => { cancelled = true; };
+	}, [id, group?.id, group?.status, group?.conversation_sid]);
+
+	// Active group with a Conversation: refresh Messaging Service binding status (needed for shared Group MMS)
+	useEffect(() => {
+		if (!id || !group || group.status !== 'active' || !group.conversation_sid) {
+			setMessagingHealthCheckError(null);
+			return;
+		}
+		let cancelled = false;
+		setMessagingHealthCheckError(null);
+		apiRequest(`/groups/${id}/ensure-conversation`, { method: 'POST' })
+			.then((data) => {
+				if (!cancelled) {
+					const ok = applyEnsureConversationPayload(data);
+					if (ok) {
+						setMessagingHealthCheckError(null);
+					} else {
+						setMessagingHealthCheckError(
+							'Could not verify Twilio Messaging Service binding. API response did not include messaging health fields.'
+						);
+					}
+				}
+			})
+			.catch(() => {
+				if (!cancelled) {
+					setMessagingHealthCheckError('Could not verify Twilio Messaging Service binding. Check API/Twilio configuration and reload.');
+				}
 			});
 		return () => { cancelled = true; };
 	}, [id, group?.id, group?.status, group?.conversation_sid]);
@@ -106,7 +184,24 @@ export function GroupDetail() {
 			setGroup(groupData.group);
 			setInvites(groupData.invites || []);
 			setMembers(groupData.members || []);
+			setThreadMessages(
+				Array.isArray(groupData.messages) ? groupData.messages : [],
+			);
 			setUserProfile(userData || null);
+			if (
+				groupData.group?.conversation_sid &&
+				typeof groupData.messaging_service_bound === 'boolean'
+			) {
+				applyEnsureConversationPayload(groupData);
+				setMessagingHealthCheckError(null);
+			} else if (!groupData.group?.conversation_sid) {
+				setMessagingHealth(null);
+				setMessagingHealthCheckError(null);
+			} else {
+				setMessagingHealthCheckError(
+					'Could not verify Twilio Messaging Service binding. API response did not include messaging health fields.'
+				);
+			}
 		} catch (error) {
 			console.error('Failed to load group:', error);
 			navigate('/app/groups');
@@ -223,7 +318,10 @@ export function GroupDetail() {
 											setConversationError(null);
 											setEnsuringConversation(true);
 											apiRequest(`/groups/${id}/ensure-conversation`, { method: 'POST' })
-												.then(() => loadGroup())
+												.then((data) => {
+													applyEnsureConversationPayload(data);
+													loadGroup();
+												})
 												.catch((err: { message?: string }) => setConversationError(err?.message ?? 'Could not set up messaging'))
 												.finally(() => setEnsuringConversation(false));
 										}}
@@ -236,10 +334,143 @@ export function GroupDetail() {
 					</Card>
 				)}
 
+				{group.status === 'active' &&
+					group.conversation_sid &&
+					!messagingHealth && (
+						<Card
+							style={{
+								marginBottom: '1.5rem',
+								background: messagingHealthCheckError ? 'rgba(220, 53, 69, 0.10)' : theme.bgSubtle,
+								borderColor: messagingHealthCheckError ? theme.danger : theme.border,
+								borderWidth: 1,
+								borderStyle: 'solid',
+							}}
+						>
+							<p style={{ margin: 0, fontSize: '0.95rem', color: messagingHealthCheckError ? theme.text : theme.textMuted, lineHeight: 1.5 }}>
+								<strong style={{ display: 'block', marginBottom: '0.35rem', color: theme.text }}>
+									{messagingHealthCheckError ? 'Group text threading status unavailable' : 'Checking group text threading…'}
+								</strong>
+								{messagingHealthCheckError ??
+									'We are verifying this group’s Twilio Messaging Service binding now.'}
+							</p>
+						</Card>
+					)}
+
+				{group.status === 'active' &&
+					group.conversation_sid &&
+					messagingHealth &&
+					messagingHealth.envConfigured &&
+					messagingHealth.bound &&
+					messagingHealth.matchesEnv && (
+						<Card
+							style={{
+								marginBottom: '1.5rem',
+								background: 'rgba(46, 160, 67, 0.10)',
+								borderColor: '#2ea043',
+								borderWidth: 1,
+								borderStyle: 'solid',
+							}}
+						>
+							<p style={{ margin: 0, fontSize: '0.95rem', color: theme.text, lineHeight: 1.5 }}>
+								<strong style={{ display: 'block', marginBottom: '0.35rem' }}>Group text threading ready</strong>
+								This group’s conversation is correctly bound to your configured Messaging Service. Messages should send as one shared group thread (carrier/device behavior can still vary).
+							</p>
+						</Card>
+					)}
+
+				{group.status === 'active' &&
+					group.conversation_sid &&
+					messagingHealth &&
+					!(
+						messagingHealth.envConfigured &&
+						messagingHealth.bound &&
+						messagingHealth.matchesEnv
+					) && (
+						<Card
+							style={{
+								marginBottom: '1.5rem',
+								background: 'rgba(220, 53, 69, 0.10)',
+								borderColor: theme.danger,
+								borderWidth: 1,
+								borderStyle: 'solid',
+							}}
+						>
+							<p style={{ margin: 0, fontSize: '0.95rem', color: theme.text, lineHeight: 1.5 }}>
+								<strong style={{ display: 'block', marginBottom: '0.35rem' }}>Group text threading</strong>
+								{!messagingHealth.bound ? (
+									<>
+										Weekly messages may arrive as separate one-on-one threads instead of one shared group chat. The API host should bind this
+										conversation to a Messaging Service: set{' '}
+										<code style={{ fontSize: '0.88em' }}>TWILIO_MESSAGING_SERVICE_SID</code> (your A2P <code style={{ fontSize: '0.88em' }}>MG…</code>{' '}
+										service that includes this app’s number), redeploy, open this page again (or use Retry if shown above), and confirm in Twilio
+										that the Conversation has a Messaging Service.
+									</>
+								) : !messagingHealth.envConfigured ? (
+									<>
+										The API does not have a valid <code style={{ fontSize: '0.88em' }}>TWILIO_MESSAGING_SERVICE_SID</code>. The host should add
+										it to the server environment (the same <code style={{ fontSize: '0.88em' }}>MG…</code> Messaging Service the Twilio number
+										uses for A2P), redeploy, then reload this page so HoneyText can keep the Conversation aligned for shared group MMS.
+									</>
+								) : (
+									<>
+										This group’s conversation is tied to a different Messaging Service than <code style={{ fontSize: '0.88em' }}>TWILIO_MESSAGING_SERVICE_SID</code> on
+										the API. Update the env var or recreate the group conversation so they match (see deploy docs).
+									</>
+								)}
+							</p>
+						</Card>
+					)}
+
 				<Card>
 					<p style={{ margin: 0 }}>
 						<strong>Schedule:</strong> {getDayName(group.schedule_day)} at {formatTime12(group.schedule_time)} ({group.schedule_timezone})
 					</p>
+				</Card>
+
+				<Card>
+					<h2 style={sectionHeading}>Text thread</h2>
+					<p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: theme.textMuted, lineHeight: 1.45 }}>
+						Messages we log from your group’s SMS thread (weekly questions and replies). Full history stays in your phone’s Messages app.
+					</p>
+					{threadMessages.length === 0 ? (
+						<p style={{ margin: 0, color: theme.textMuted, fontStyle: 'italic', fontSize: '0.95rem' }}>
+							No messages yet. After the first weekly question or a reply in the group text, they will show up here.
+						</p>
+					) : (
+						<div
+							style={{
+								display: 'flex',
+								flexDirection: 'column',
+								gap: '0.75rem',
+								maxHeight: 'min(420px, 55vh)',
+								overflowY: 'auto',
+							}}
+						>
+							{[...threadMessages].reverse().map((msg) => (
+								<div
+									key={msg.id}
+									style={{
+										...messageRowStyle,
+										display: 'flex',
+										flexDirection: 'column',
+										gap: '0.35rem',
+									}}
+								>
+									<div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+										<span style={{ fontWeight: 600, fontSize: '0.88rem', color: theme.text }}>
+											{messageAuthorLabel(msg)}
+										</span>
+										<span style={{ fontSize: '0.8rem', color: theme.textLight }}>
+											{formatMessageTimestamp(msg.created_at)}
+										</span>
+									</div>
+									<p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: 1.45, color: theme.text }}>
+										{msg.body ?? ''}
+									</p>
+								</div>
+							))}
+						</div>
+					)}
 				</Card>
 
 				<Card>
@@ -367,4 +598,26 @@ function getMembersWithOwner(members: Member[], userProfile: UserProfile | null)
 		const isOwner = hasOwnerPhone && m.phone && parsePhoneToDigits(m.phone) === ownerDigits;
 		return { ...m, isOwner: Boolean(isOwner) };
 	});
+}
+
+function messageAuthorLabel(msg: GroupMessage): string {
+	if (msg.direction === 'outbound') {
+		if (msg.author === 'honeytext') return 'HoneyText';
+		return msg.author?.trim() || 'HoneyText';
+	}
+	return msg.author?.trim() || 'Member';
+}
+
+function formatMessageTimestamp(iso: string): string {
+	try {
+		const d = new Date(iso);
+		return d.toLocaleString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit',
+		});
+	} catch {
+		return iso;
+	}
 }

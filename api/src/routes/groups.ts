@@ -1,7 +1,16 @@
 import express from 'express'
 import { authenticateUser, AuthRequest } from '../middleware/auth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
-import { addSmsParticipant, removeParticipant, deleteConversation, sendSMS, toE164 } from '../lib/twilio.js'
+import {
+  addSmsParticipant,
+  removeParticipant,
+  deleteConversation,
+  sendSMS,
+  toE164,
+  ensureConversationMessagingServiceSid,
+  getConversationMessagingServiceSid,
+  MESSAGING_SERVICE_SID_REGEX,
+} from '../lib/twilio.js'
 import { checkCanCreateGroup, checkCanAddMemberToGroup } from '../lib/subscriptionLimits.js'
 import { ensureGroupConversation } from '../lib/groupConversation.js'
 import { randomBytes, randomInt } from 'crypto'
@@ -43,12 +52,30 @@ router.get('/', async (req: AuthRequest, res) => {
       memberCountByGroup[m.group_id] = (memberCountByGroup[m.group_id] || 0) + 1
     }
 
+    const { data: recentMsgs } = await supabaseAdmin
+      .from('group_messages')
+      .select('group_id, body, created_at')
+      .in('group_id', groupIds)
+      .order('created_at', { ascending: false })
+      .limit(400)
+
+    const lastMessageByGroup: Record<string, { preview: string; at: string }> = {}
+    for (const row of recentMsgs || []) {
+      if (lastMessageByGroup[row.group_id]) continue
+      const raw = (row.body || '').trim()
+      const preview = raw.length > 140 ? `${raw.slice(0, 137)}…` : raw
+      lastMessageByGroup[row.group_id] = { preview, at: row.created_at }
+    }
+
     const result = (groups || []).map((g: any) => {
       const { question_sets, ...group } = g
+      const last = lastMessageByGroup[g.id]
       return {
         ...group,
         question_set_name: question_sets?.name ?? null,
         member_count: memberCountByGroup[g.id] ?? 0,
+        last_message_preview: last?.preview ?? null,
+        last_message_at: last?.at ?? null,
       }
     })
 
@@ -123,7 +150,7 @@ router.post('/', async (req: AuthRequest, res) => {
     })
 
     const smsBody =
-      `HoneyText: Reply YES ${acceptCode} to activate your group "${name}". You'll receive weekly discussion questions via text. Msg & data rates may apply. Reply STOP to opt out, HELP for help.`
+      `HoneyText: Reply YES ${acceptCode} to activate your group "${name}". You'll receive weekly discussion questions via text.\n\nMsg & data rates may apply. Reply STOP to opt out, HELP for help.`
     try {
       await sendSMS(ownerPhone, smsBody)
     } catch (err: any) {
@@ -175,6 +202,13 @@ router.get('/:id', async (req: AuthRequest, res) => {
       .eq('group_id', groupId)
       .order('confirmed_at', { ascending: false })
 
+    const { data: messages } = await supabaseAdmin
+      .from('group_messages')
+      .select('id, body, author, direction, created_at')
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false })
+      .limit(100)
+
     // Get owner profile
     const { data: owner } = await supabaseAdmin
       .from('users')
@@ -182,11 +216,37 @@ router.get('/:id', async (req: AuthRequest, res) => {
       .eq('id', userId)
       .single()
 
+    let messaging_service_bound: boolean | undefined
+    let messaging_service_env_configured: boolean | undefined
+    let messaging_service_matches_env: boolean | undefined
+    if (group.conversation_sid) {
+      let boundSid: string | null = null
+      try {
+        boundSid = await getConversationMessagingServiceSid(group.conversation_sid)
+      } catch (fetchErr: any) {
+        console.error('[groups] getConversationMessagingServiceSid:', fetchErr?.message || fetchErr)
+        boundSid = null
+      }
+      const envMg = process.env.TWILIO_MESSAGING_SERVICE_SID?.trim()
+      const mgConfigured = !!envMg && MESSAGING_SERVICE_SID_REGEX.test(envMg)
+      messaging_service_bound = !!boundSid
+      messaging_service_env_configured = mgConfigured
+      messaging_service_matches_env = mgConfigured && !!boundSid && boundSid === envMg
+    }
+
     res.json({
       group,
       owner,
       invites: invites || [],
       members: members || [],
+      messages: messages || [],
+      ...(messaging_service_bound !== undefined
+        ? {
+            messaging_service_bound,
+            messaging_service_env_configured,
+            messaging_service_matches_env,
+          }
+        : {}),
     })
   } catch (error: any) {
     console.error('Error fetching group:', error)
@@ -212,7 +272,23 @@ router.post('/:id/ensure-conversation', async (req: AuthRequest, res) => {
     }
 
     if (group.conversation_sid) {
-      return res.json({ conversation_sid: group.conversation_sid })
+      try {
+        await ensureConversationMessagingServiceSid(group.conversation_sid)
+      } catch (bindErr: any) {
+        console.error(
+          '[groups] ensureConversationMessagingServiceSid failed:',
+          bindErr?.message || bindErr
+        )
+      }
+      const boundSid = await getConversationMessagingServiceSid(group.conversation_sid)
+      const envMg = process.env.TWILIO_MESSAGING_SERVICE_SID?.trim()
+      const mgConfigured = !!envMg && MESSAGING_SERVICE_SID_REGEX.test(envMg)
+      return res.json({
+        conversation_sid: group.conversation_sid,
+        messaging_service_bound: !!boundSid,
+        messaging_service_env_configured: mgConfigured,
+        messaging_service_matches_env: mgConfigured && !!boundSid && boundSid === envMg,
+      })
     }
 
     if (group.status !== 'active') {
@@ -232,7 +308,25 @@ router.post('/:id/ensure-conversation', async (req: AuthRequest, res) => {
       .eq('id', groupId)
       .single()
 
-    res.json({ conversation_sid: updated?.conversation_sid ?? conversationSid })
+    const sid = updated?.conversation_sid ?? conversationSid
+    try {
+      if (sid) await ensureConversationMessagingServiceSid(sid)
+    } catch (bindErr: any) {
+      console.error(
+        '[groups] ensureConversationMessagingServiceSid failed after create:',
+        bindErr?.message || bindErr
+      )
+    }
+    const boundSid = sid ? await getConversationMessagingServiceSid(sid) : null
+    const envMg = process.env.TWILIO_MESSAGING_SERVICE_SID?.trim()
+    const mgConfigured = !!envMg && MESSAGING_SERVICE_SID_REGEX.test(envMg)
+
+    res.json({
+      conversation_sid: sid,
+      messaging_service_bound: !!boundSid,
+      messaging_service_env_configured: mgConfigured,
+      messaging_service_matches_env: mgConfigured && !!boundSid && boundSid === envMg,
+    })
   } catch (error: any) {
     console.error('Error ensuring group conversation:', error)
     res.status(500).json({ error: error.message || 'Failed to set up messaging' })
@@ -370,7 +464,7 @@ router.post('/:id/invites', async (req: AuthRequest, res) => {
     const origin = process.env.CORS_ORIGIN || 'http://localhost:3000'
     const inviteUrl = `${origin}/invite/${token}`
     const smsBody =
-      `HoneyText: You're invited to ${group.name}! You'll get weekly discussion questions via text. Msg & data rates may apply. To join, reply exactly: "YES ${acceptCode}". Reply STOP to opt out, HELP for help.`
+      `HoneyText: You're invited to ${group.name}! You'll get weekly discussion questions via text. To join, reply exactly: "YES ${acceptCode}".\n\nMsg & data rates may apply. Reply STOP to opt out, HELP for help.`
 
     try {
       await sendSMS(normalizedPhone, smsBody)

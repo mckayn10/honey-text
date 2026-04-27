@@ -76,7 +76,8 @@ export async function sendSMS(to: string, message: string) {
   }
 }
 
-const MG_SID_REGEX = /^MG[0-9a-f]{32}$/i
+/** Valid Twilio Messaging Service SID (MG + 32 hex). */
+export const MESSAGING_SERVICE_SID_REGEX = /^MG[0-9a-f]{32}$/i
 
 /**
  * Create a Twilio Conversation for Group MMS.
@@ -89,15 +90,15 @@ export async function createConversation(friendlyName: string) {
   const params: { friendlyName: string; messagingServiceSid?: string } = {
     friendlyName,
   }
-  if (messagingServiceSid && MG_SID_REGEX.test(messagingServiceSid)) {
+  if (messagingServiceSid && MESSAGING_SERVICE_SID_REGEX.test(messagingServiceSid)) {
     params.messagingServiceSid = messagingServiceSid
-  } else if (messagingServiceSid && !MG_SID_REGEX.test(messagingServiceSid)) {
+  } else if (messagingServiceSid && !MESSAGING_SERVICE_SID_REGEX.test(messagingServiceSid)) {
     console.warn(
       '[twilio] TWILIO_MESSAGING_SERVICE_SID is set but invalid (expected MG + 32 hex). Ignoring.'
     )
   }
   const created = await client.conversations.v1.conversations.create(params)
-  if (messagingServiceSid && MG_SID_REGEX.test(messagingServiceSid)) {
+  if (messagingServiceSid && MESSAGING_SERVICE_SID_REGEX.test(messagingServiceSid)) {
     const bound = (created as { messagingServiceSid?: string }).messagingServiceSid
     if (!bound) {
       console.warn(
@@ -111,6 +112,16 @@ export async function createConversation(friendlyName: string) {
   return created
 }
 
+/** Current Messaging Service SID on the Conversation, if any (from Twilio fetch). */
+export async function getConversationMessagingServiceSid(
+  conversationSid: string
+): Promise<string | null> {
+  const client = getTwilioClient()
+  const conv = await client.conversations.v1.conversations(conversationSid).fetch()
+  const sid = (conv as { messagingServiceSid?: string | null }).messagingServiceSid
+  return sid && sid.length > 0 ? sid : null
+}
+
 /**
  * If TWILIO_MESSAGING_SERVICE_SID is set, ensure the Twilio Conversation is bound to it.
  * Conversations created before this env var existed (or before the API loaded it) stay
@@ -119,7 +130,7 @@ export async function createConversation(friendlyName: string) {
 export async function ensureConversationMessagingServiceSid(conversationSid: string): Promise<void> {
   const client = getTwilioClient()
   const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID?.trim()
-  if (!messagingServiceSid || !MG_SID_REGEX.test(messagingServiceSid)) {
+  if (!messagingServiceSid || !MESSAGING_SERVICE_SID_REGEX.test(messagingServiceSid)) {
     return
   }
 

@@ -2,6 +2,7 @@ import express from 'express'
 import { supabaseAdmin } from '../lib/supabase.js'
 import { sendSMS, toE164 } from '../lib/twilio.js'
 import { ensureGroupConversation } from '../lib/groupConversation.js'
+import { sendMemberJoinedAnnouncement } from '../lib/groupAnnouncements.js'
 import { checkCanAddMemberToGroup } from '../lib/subscriptionLimits.js'
 
 const router = express.Router()
@@ -123,7 +124,7 @@ router.post('/conversations/webhook', async (req, res) => {
           console.error('[webhook] ensureGroupConversation (owner-only) failed:', err)
         }
         try {
-          await sendSMS(fromE164, `HoneyText: Your group "${group?.name ?? 'Group'}" is now active! You'll receive weekly discussion questions via text. Msg & data rates may apply. Reply STOP to opt out. Reply HELP for help.`)
+          await sendSMS(fromE164, `HoneyText: Your group "${group?.name ?? 'Group'}" is now active! You'll receive weekly discussion questions via text.\n\nMsg & data rates may apply. Reply STOP to opt out. Reply HELP for help.`)
         } catch (err) {
           console.error('[webhook] owner confirm SMS failed:', err)
         }
@@ -139,13 +140,18 @@ router.post('/conversations/webhook', async (req, res) => {
         })
         await supabaseAdmin.from('groups').update({ status: 'active' }).eq('id', invite.group_id)
         try {
-          await ensureGroupConversation(invite.group_id)
+          const conversationSid = await ensureGroupConversation(invite.group_id)
+          try {
+            await sendMemberJoinedAnnouncement(invite.group_id, conversationSid, invite.invitee_name)
+          } catch (announceErr) {
+            console.error('[webhook] sendMemberJoinedAnnouncement failed:', announceErr)
+          }
         } catch (err) {
           console.error('[webhook] ensureGroupConversation failed:', err)
         }
         const groupName = group?.name ?? 'the group'
         try {
-          await sendSMS(fromE164, `HoneyText: Welcome! You've joined ${groupName}. You'll receive weekly discussion questions via text. Msg & data rates may apply. Reply STOP to opt out. Reply HELP for help.`)
+          await sendSMS(fromE164, `HoneyText: Welcome! You've joined ${groupName}. You'll receive weekly discussion questions via text.\n\nMsg & data rates may apply. Reply STOP to opt out. Reply HELP for help.`)
         } catch (err) {
           console.error('[webhook] confirm SMS failed:', err)
         }

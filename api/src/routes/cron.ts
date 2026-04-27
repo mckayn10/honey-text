@@ -1,7 +1,12 @@
 import express from 'express'
 import { authenticateCron } from '../middleware/cronAuth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
-import { ensureConversationMessagingServiceSid, sendConversationMessage } from '../lib/twilio.js'
+import {
+  ensureConversationMessagingServiceSid,
+  getConversationMessagingServiceSid,
+  MESSAGING_SERVICE_SID_REGEX,
+  sendConversationMessage,
+} from '../lib/twilio.js'
 import { DateTime } from 'luxon'
 
 const router = express.Router()
@@ -118,6 +123,19 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
           console.error(
             `[cron] ensureConversationMessagingServiceSid failed for group ${group.id}:`,
             bindErr?.message || bindErr
+          )
+        }
+
+        const boundSid = await getConversationMessagingServiceSid(group.conversation_sid)
+        const envMg = process.env.TWILIO_MESSAGING_SERVICE_SID?.trim()
+        const envOk = !!envMg && MESSAGING_SERVICE_SID_REGEX.test(envMg)
+        if (!boundSid) {
+          console.warn(
+            `[cron] group=${group.id} conversation=${group.conversation_sid}: no MessagingServiceSid on Conversation; delivery may be separate 1:1 SMS per member. Set TWILIO_MESSAGING_SERVICE_SID (MG…) on the API, redeploy, open the group in the app (ensure-conversation), or recreate the Conversation per DEPLOY.md.`
+          )
+        } else if (envOk && boundSid !== envMg) {
+          console.warn(
+            `[cron] group=${group.id}: Conversation uses messaging service ${boundSid} but TWILIO_MESSAGING_SERVICE_SID is ${envMg}.`
           )
         }
 

@@ -15,6 +15,9 @@ interface Group {
 	schedule_time: string;
 	schedule_timezone: string;
 	created_at: string;
+	/** Latest logged SMS thread line (from group_messages), if any */
+	last_message_preview?: string | null;
+	last_message_at?: string | null;
 }
 
 const primaryLinkStyle: React.CSSProperties = {
@@ -220,6 +223,28 @@ export function Dashboard() {
 										{getDayName(group.schedule_day)} at{' '}
 										{group.schedule_time}
 									</p>
+									{group.last_message_preview ? (
+										<p
+											style={{
+												color: theme.textMuted,
+												fontSize: '0.85rem',
+												marginTop: '0.65rem',
+												paddingTop: '0.65rem',
+												borderTop: `1px solid ${theme.borderLight}`,
+												lineHeight: 1.4,
+											}}
+										>
+											<span style={{ display: 'block', fontWeight: 600, marginBottom: '0.2rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+												Latest in thread
+											</span>
+											{group.last_message_preview}
+											{group.last_message_at && (
+												<span style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.8rem', color: theme.textLight }}>
+													{formatGroupListTime(group.last_message_at)}
+												</span>
+											)}
+										</p>
+									) : null}
 								</Link>
 							))}
 						</div>
@@ -241,4 +266,17 @@ function getDayName(day: number): string {
 		'Saturday',
 	];
 	return days[day] || 'Unknown';
+}
+
+function formatGroupListTime(iso: string): string {
+	try {
+		return new Date(iso).toLocaleString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit',
+		});
+	} catch {
+		return '';
+	}
 }

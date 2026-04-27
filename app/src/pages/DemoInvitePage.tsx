@@ -92,7 +92,10 @@ export function DemoInvitePage() {
 						You've joined <strong>{DEMO_INVITE.group_name}</strong>. You'll receive weekly discussion questions via text message.
 					</p>
 					<p style={{ color: theme.textMuted, fontSize: '0.9rem', lineHeight: 1.6 }}>
-						Reply <strong>STOP</strong> to opt out. Reply <strong>HELP</strong> for help. Msg & data rates may apply.
+						Reply <strong>STOP</strong> to opt out. Reply <strong>HELP</strong> for help.
+						<br />
+						<br />
+						Msg & data rates may apply.
 					</p>
 					<div style={{ marginTop: '2rem', padding: '1rem', background: theme.bg, borderRadius: 4 }}>
 						<p style={{ color: theme.textMuted, fontSize: '0.85rem', margin: 0 }}>
@@ -168,7 +171,10 @@ export function DemoInvitePage() {
 						style={{ marginTop: '0.2rem', width: 18, height: 18, accentColor: theme.primary, flexShrink: 0 }}
 					/>
 					<span style={{ color: theme.text, fontSize: '0.9rem', lineHeight: 1.5 }}>
-						I agree to receive text messages from HoneyText as described above. Msg & data rates may apply.
+						I agree to receive text messages from HoneyText as described above.
+						<br />
+						<br />
+						Msg & data rates may apply.
 					</span>
 				</label>
 
