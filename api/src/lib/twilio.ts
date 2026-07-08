@@ -183,6 +183,26 @@ export async function addSmsParticipant(conversationSid: string, phone: string) 
     })
 }
 
+/** SMS participant phone numbers already on a Conversation (messagingBinding.address). */
+export async function listConversationSmsPhones(conversationSid: string): Promise<Set<string>> {
+  const client = getTwilioClient()
+  const participants = await client.conversations.v1
+    .conversations(conversationSid)
+    .participants.list()
+  const phones = new Set<string>()
+  for (const p of participants) {
+    const binding = (p as { messagingBinding?: { address?: string } }).messagingBinding
+    const address = binding?.address
+    if (!address) continue
+    try {
+      phones.add(toE164(address))
+    } catch {
+      // skip malformed binding
+    }
+  }
+  return phones
+}
+
 export async function removeParticipant(conversationSid: string, participantSid: string) {
   const client = getTwilioClient()
   return client.conversations.v1

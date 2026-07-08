@@ -4,6 +4,7 @@ import {
   addProjectedParticipant,
   addSmsParticipant,
   ensureConversationMessagingServiceSid,
+  listConversationSmsPhones,
   toE164,
 } from './twilio.js'
 
@@ -63,6 +64,71 @@ async function hasDuplicateMemberSet(groupId: string, memberPhones: Set<string>)
 }
 
 /**
+ * Add any confirmed member phones missing from an existing Twilio Conversation.
+ * Conversations are often created when only the owner has joined; later members must be synced.
+ */
+async function syncConversationParticipants(
+  groupId: string,
+  conversationSid: string,
+  ownerId: string
+): Promise<void> {
+  const memberPhones = await getGroupMemberPhones(groupId)
+  if (memberPhones.size === 0) return
+
+  const existingPhones = await listConversationSmsPhones(conversationSid)
+  const missingPhones = [...memberPhones].filter((p) => !existingPhones.has(p))
+  if (missingPhones.length === 0) return
+
+  const { data: owner } = await supabaseAdmin
+    .from('users')
+    .select('display_name, email, phone')
+    .eq('id', ownerId)
+    .single()
+
+  const otherGroupPhones = new Set<string>()
+  const { data: otherGroups } = await supabaseAdmin
+    .from('groups')
+    .select('id')
+    .not('id', 'eq', groupId)
+    .not('conversation_sid', 'is', null)
+  for (const g of otherGroups || []) {
+    const pm = await getGroupMemberPhones(g.id)
+    pm.forEach((p) => otherGroupPhones.add(p))
+  }
+
+  const uniquePhones = missingPhones.filter((p) => !otherGroupPhones.has(p))
+  const restPhones = missingPhones.filter((p) => otherGroupPhones.has(p))
+  const addOrder = [...uniquePhones, ...restPhones]
+
+  const { data: allMembers } = await supabaseAdmin
+    .from('group_members')
+    .select('id, phone')
+    .eq('group_id', groupId)
+
+  for (const phone of addOrder) {
+    const participant = await addSmsParticipant(conversationSid, phone)
+    const isOwner = owner?.phone && toE164(owner.phone) === phone
+    const existingMember = (allMembers || []).find((m) => m.phone && toE164(m.phone) === phone)
+
+    if (!existingMember && isOwner) {
+      await supabaseAdmin.from('group_members').insert({
+        group_id: groupId,
+        name: owner!.display_name || owner!.email || 'Group Owner',
+        phone,
+        confirmed_at: new Date().toISOString(),
+        participant_sid: participant.sid,
+        is_owner: true,
+      })
+    } else if (existingMember) {
+      await supabaseAdmin
+        .from('group_members')
+        .update({ participant_sid: participant.sid, is_owner: isOwner })
+        .eq('id', existingMember.id)
+    }
+  }
+}
+
+/**
  * Ensure a group has a Twilio Conversation. Creates only when member set is unique.
  * Deferred creation avoids Twilio 50438 and keeps each group in its own MMS thread.
  */
@@ -82,6 +148,15 @@ export async function ensureGroupConversation(groupId: string): Promise<string |
         '[groupConversation] ensureConversationMessagingServiceSid failed:',
         (err as Error)?.message || err
       )
+    }
+    try {
+      await syncConversationParticipants(groupId, group.conversation_sid, group.owner_id)
+    } catch (err) {
+      console.error(
+        '[groupConversation] syncConversationParticipants failed:',
+        (err as Error)?.message || err
+      )
+      throw err
     }
     return group.conversation_sid
   }

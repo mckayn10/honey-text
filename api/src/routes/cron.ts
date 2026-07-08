@@ -1,8 +1,8 @@
 import express from 'express'
 import { authenticateCron } from '../middleware/cronAuth.js'
 import { supabaseAdmin } from '../lib/supabase.js'
+import { ensureGroupConversation } from '../lib/groupConversation.js'
 import {
-  ensureConversationMessagingServiceSid,
   getConversationMessagingServiceSid,
   MESSAGING_SERVICE_SID_REGEX,
   sendConversationMessage,
@@ -112,26 +112,27 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
           continue
         }
 
-        if (!group.conversation_sid) {
+        let conversationSid = group.conversation_sid as string | null
+        try {
+          conversationSid = await ensureGroupConversation(group.id)
+        } catch (ensureErr: any) {
+          console.error(
+            `[cron] ensureGroupConversation failed for group ${group.id}:`,
+            ensureErr?.message || ensureErr
+          )
+        }
+
+        if (!conversationSid) {
           noteSkip(group, 'no conversation_sid (Conversation not created yet)')
           continue
         }
 
-        try {
-          await ensureConversationMessagingServiceSid(group.conversation_sid)
-        } catch (bindErr: any) {
-          console.error(
-            `[cron] ensureConversationMessagingServiceSid failed for group ${group.id}:`,
-            bindErr?.message || bindErr
-          )
-        }
-
-        const boundSid = await getConversationMessagingServiceSid(group.conversation_sid)
+        const boundSid = await getConversationMessagingServiceSid(conversationSid)
         const envMg = process.env.TWILIO_MESSAGING_SERVICE_SID?.trim()
         const envOk = !!envMg && MESSAGING_SERVICE_SID_REGEX.test(envMg)
         if (!boundSid) {
           console.warn(
-            `[cron] group=${group.id} conversation=${group.conversation_sid}: no MessagingServiceSid on Conversation; delivery may be separate 1:1 SMS per member. Set TWILIO_MESSAGING_SERVICE_SID (MG…) on the API, redeploy, open the group in the app (ensure-conversation), or recreate the Conversation per DEPLOY.md.`
+            `[cron] group=${group.id} conversation=${conversationSid}: no MessagingServiceSid on Conversation; delivery may be separate 1:1 SMS per member. Set TWILIO_MESSAGING_SERVICE_SID (MG…) on the API, redeploy, open the group in the app (ensure-conversation), or recreate the Conversation per DEPLOY.md.`
           )
         } else if (envOk && boundSid !== envMg) {
           console.warn(
@@ -146,7 +147,7 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
         const authorIdentity = `honeytext-${group.id}`
         const formattedBody = `This week's question for ${group.name}: ${question.body}`
         const messageResult = await sendConversationMessage(
-          group.conversation_sid,
+          conversationSid,
           formattedBody,
           authorIdentity
         )
@@ -154,13 +155,13 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
         const delivery = (messageResult as any)?.delivery
         if (delivery) {
           console.log(
-            `[cron] group=${group.id} conversation=${group.conversation_sid} message_sid=${(messageResult as any)?.sid} delivery=${JSON.stringify(delivery)}`
+            `[cron] group=${group.id} conversation=${conversationSid} message_sid=${(messageResult as any)?.sid} delivery=${JSON.stringify(delivery)}`
           )
         }
 
         await supabaseAdmin.from('group_messages').insert({
           group_id: group.id,
-          conversation_sid: group.conversation_sid,
+          conversation_sid: conversationSid,
           author: 'honeytext',
           body: formattedBody,
           direction: 'outbound',
