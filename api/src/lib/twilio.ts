@@ -226,6 +226,11 @@ export async function sendConversationMessage(
     .messages.create({ author, body })
 }
 
+export async function listConversationMessages(conversationSid: string, limit = 100) {
+  const client = getTwilioClient()
+  return client.conversations.v1.conversations(conversationSid).messages.list({ limit })
+}
+
 export async function deleteConversation(conversationSid: string) {
   const client = getTwilioClient()
   return client.conversations.v1

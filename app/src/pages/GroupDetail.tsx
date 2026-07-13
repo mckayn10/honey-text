@@ -64,12 +64,12 @@ const listItemStyle: React.CSSProperties = {
 
 const sectionHeading: React.CSSProperties = { marginBottom: '1rem', color: theme.text };
 
-const messageRowStyle: React.CSSProperties = {
-	padding: '0.85rem 1rem',
-	background: theme.bgSubtle,
-	borderRadius: 10,
-	border: `1px solid ${theme.border}`,
-};
+interface QuestionThread {
+	question: GroupMessage;
+	replies: GroupMessage[];
+}
+
+const weeklyQuestionPrefix = "This week's question for ";
 
 export function GroupDetail() {
 	const { id } = useParams<{ id: string }>();
@@ -261,6 +261,7 @@ export function GroupDetail() {
 
 	const pendingInvites = invites.filter((i) => i.status === 'pending');
 	const membersWithOwner = getMembersWithOwner(members, userProfile);
+	const { questionThreads, otherMessages } = groupMessagesIntoThreads(threadMessages);
 
 	return (
 		<div style={{ padding: '0 0 3rem' }}>
@@ -441,32 +442,60 @@ export function GroupDetail() {
 							style={{
 								display: 'flex',
 								flexDirection: 'column',
-								gap: '0.75rem',
-								maxHeight: 'min(420px, 55vh)',
+								gap: '1rem',
+								maxHeight: 'min(520px, 60vh)',
 								overflowY: 'auto',
 							}}
 						>
-							{[...threadMessages].reverse().map((msg) => (
+							{otherMessages.map((msg) => (
+								<div key={msg.id} style={messageRowStyle}>
+									<MessageRow msg={msg} members={membersWithOwner} />
+								</div>
+							))}
+							{[...questionThreads].reverse().map((thread) => (
 								<div
-									key={msg.id}
+									key={thread.question.id}
 									style={{
 										...messageRowStyle,
 										display: 'flex',
 										flexDirection: 'column',
-										gap: '0.35rem',
+										gap: '0.75rem',
 									}}
 								>
-									<div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-										<span style={{ fontWeight: 600, fontSize: '0.88rem', color: theme.text }}>
-											{messageAuthorLabel(msg)}
-										</span>
-										<span style={{ fontSize: '0.8rem', color: theme.textLight }}>
-											{formatMessageTimestamp(msg.created_at)}
-										</span>
+									<MessageRow msg={thread.question} members={membersWithOwner} />
+									<div
+										style={{
+											marginLeft: '0.5rem',
+											paddingLeft: '0.85rem',
+											borderLeft: `3px solid ${theme.border}`,
+											display: 'flex',
+											flexDirection: 'column',
+											gap: '0.65rem',
+										}}
+									>
+										<p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+											Replies ({thread.replies.length})
+										</p>
+										{thread.replies.length === 0 ? (
+											<p style={{ margin: 0, color: theme.textMuted, fontStyle: 'italic', fontSize: '0.9rem' }}>
+												No replies yet.
+											</p>
+										) : (
+											thread.replies.map((reply) => (
+												<div
+													key={reply.id}
+													style={{
+														padding: '0.65rem 0.75rem',
+														background: theme.bg,
+														borderRadius: 8,
+														border: `1px solid ${theme.border}`,
+													}}
+												>
+													<MessageRow msg={reply} members={membersWithOwner} compact />
+												</div>
+											))
+										)}
 									</div>
-									<p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: 1.45, color: theme.text }}>
-										{msg.body ?? ''}
-									</p>
 								</div>
 							))}
 						</div>
@@ -600,13 +629,92 @@ function getMembersWithOwner(members: Member[], userProfile: UserProfile | null)
 	});
 }
 
-function messageAuthorLabel(msg: GroupMessage): string {
+function isWeeklyQuestion(msg: GroupMessage): boolean {
+	return msg.direction === 'outbound' && (msg.body?.startsWith(weeklyQuestionPrefix) ?? false);
+}
+
+function groupMessagesIntoThreads(messages: GroupMessage[]): {
+	questionThreads: QuestionThread[];
+	otherMessages: GroupMessage[];
+} {
+	const sorted = [...messages].sort(
+		(a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+	);
+	const questionThreads: QuestionThread[] = [];
+	const otherMessages: GroupMessage[] = [];
+	let currentThread: QuestionThread | null = null;
+
+	for (const msg of sorted) {
+		if (isWeeklyQuestion(msg)) {
+			currentThread = { question: msg, replies: [] };
+			questionThreads.push(currentThread);
+			continue;
+		}
+		if (msg.direction === 'inbound' && currentThread) {
+			currentThread.replies.push(msg);
+			continue;
+		}
+		otherMessages.push(msg);
+	}
+
+	return { questionThreads, otherMessages };
+}
+
+function messageAuthorLabel(msg: GroupMessage, members: MemberWithOwner[]): string {
 	if (msg.direction === 'outbound') {
-		if (msg.author === 'honeytext') return 'HoneyText';
+		if (msg.author === 'honeytext' || msg.author?.startsWith('honeytext-')) return 'HoneyText';
 		return msg.author?.trim() || 'HoneyText';
 	}
-	return msg.author?.trim() || 'Member';
+	const author = msg.author?.trim();
+	if (!author) return 'Member';
+	const authorDigits = parsePhoneToDigits(author);
+	if (authorDigits.length === 10) {
+		const member = members.find((m) => m.phone && parsePhoneToDigits(m.phone) === authorDigits);
+		if (member?.name) return member.name;
+	}
+	return author;
 }
+
+function MessageRow({
+	msg,
+	members,
+	compact = false,
+}: {
+	msg: GroupMessage;
+	members: MemberWithOwner[];
+	compact?: boolean;
+}) {
+	return (
+		<div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+			<div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+				<span style={{ fontWeight: 600, fontSize: compact ? '0.84rem' : '0.88rem', color: theme.text }}>
+					{messageAuthorLabel(msg, members)}
+				</span>
+				<span style={{ fontSize: '0.8rem', color: theme.textLight }}>
+					{formatMessageTimestamp(msg.created_at)}
+				</span>
+			</div>
+			<p
+				style={{
+					margin: 0,
+					whiteSpace: 'pre-wrap',
+					fontSize: compact ? '0.9rem' : '0.95rem',
+					lineHeight: 1.45,
+					color: theme.text,
+				}}
+			>
+				{msg.body ?? ''}
+			</p>
+		</div>
+	);
+}
+
+const messageRowStyle: React.CSSProperties = {
+	padding: '0.85rem 1rem',
+	background: theme.bgSubtle,
+	borderRadius: 10,
+	border: `1px solid ${theme.border}`,
+};
 
 function formatMessageTimestamp(iso: string): string {
 	try {

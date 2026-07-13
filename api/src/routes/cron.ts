@@ -165,6 +165,7 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
           author: 'honeytext',
           body: formattedBody,
           direction: 'outbound',
+          twilio_message_sid: (messageResult as { sid?: string })?.sid ?? null,
         })
         await supabaseAdmin
           .from('group_send_state')

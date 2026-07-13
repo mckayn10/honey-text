@@ -3,6 +3,12 @@ import { supabaseAdmin } from '../lib/supabase.js'
 import { sendSMS, toE164 } from '../lib/twilio.js'
 import { ensureGroupConversation } from '../lib/groupConversation.js'
 import { sendMemberJoinedAnnouncement } from '../lib/groupAnnouncements.js'
+import { parseConversationWebhookPayload } from '../lib/conversationMessageSync.js'
+import {
+  isHoneytextAuthor,
+  logInboundGroupMessage,
+  resolveGroupIdForInboundSms,
+} from '../lib/inboundGroupMessage.js'
 import { checkCanAddMemberToGroup } from '../lib/subscriptionLimits.js'
 
 const router = express.Router()
@@ -11,6 +17,9 @@ const router = express.Router()
 // Handles: (1) Twilio Conversations payload (Group MMS), (2) standard SMS for invite accept (reply YES code)
 router.post('/conversations/webhook', async (req, res) => {
   try {
+    const payload = parseConversationWebhookPayload(
+      (req.body ?? {}) as Record<string, unknown>
+    )
     const {
       ConversationSid,
       ParticipantSid,
@@ -19,11 +28,23 @@ router.post('/conversations/webhook', async (req, res) => {
       EventType,
       From,
       To,
-    } = req.body
+    } = {
+      ConversationSid: payload.conversationSid,
+      ParticipantSid: payload.participantSid,
+      Author: payload.author,
+      Body: payload.messageBody,
+      EventType: payload.eventType,
+      From: (req.body as Record<string, unknown>)?.From as string | undefined,
+      To: (req.body as Record<string, unknown>)?.To as string | undefined,
+    }
+    const messageSid = payload.messageSid
 
     // (1) Conversations payload (Group MMS)
     if (ConversationSid) {
       if (EventType && EventType !== 'onMessageAdded') {
+        return res.status(200).send('ok')
+      }
+      if (isHoneytextAuthor(Author)) {
         return res.status(200).send('ok')
       }
       const { data: group } = await supabaseAdmin
@@ -32,14 +53,26 @@ router.post('/conversations/webhook', async (req, res) => {
         .eq('conversation_sid', ConversationSid)
         .single()
       if (group) {
-        await supabaseAdmin.from('group_messages').insert({
-          group_id: group.id,
-          conversation_sid: ConversationSid,
-          participant_sid: ParticipantSid || null,
-          author: Author || null,
-          body: Body || null,
-          direction: 'inbound',
-        })
+        try {
+          await logInboundGroupMessage({
+            groupId: group.id,
+            conversationSid: ConversationSid,
+            participantSid: ParticipantSid || null,
+            author: Author || null,
+            body: Body || null,
+            twilioMessageSid: messageSid,
+          })
+          console.log('[webhook] logged conversation reply', {
+            group_id: group.id,
+            conversation_sid: ConversationSid,
+            author: Author,
+            message_sid: messageSid,
+          })
+        } catch (err) {
+          console.error('[webhook] conversation reply log failed:', err)
+        }
+      } else {
+        console.warn('[webhook] no group for conversation_sid', ConversationSid)
       }
       return res.status(200).send('ok')
     }
@@ -156,6 +189,21 @@ router.post('/conversations/webhook', async (req, res) => {
           console.error('[webhook] confirm SMS failed:', err)
         }
         console.log('[webhook] invite accepted via SMS', { invite_id: invite.id, group_id: invite.group_id, from: fromE164 })
+      }
+    } else {
+      // (3) Standard SMS reply from a group member (e.g. 1:1 thread with Twilio number)
+      const groupId = await resolveGroupIdForInboundSms(fromE164)
+      if (groupId && bodyTrim.length > 0) {
+        try {
+          await logInboundGroupMessage({
+            groupId,
+            author: fromE164,
+            body: bodyTrim,
+          })
+          console.log('[webhook] logged SMS reply', { group_id: groupId, from: fromE164 })
+        } catch (err) {
+          console.error('[webhook] SMS reply log failed:', err)
+        }
       }
     }
 

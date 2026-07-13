@@ -13,6 +13,7 @@ import {
 } from '../lib/twilio.js'
 import { checkCanCreateGroup, checkCanAddMemberToGroup } from '../lib/subscriptionLimits.js'
 import { ensureGroupConversation } from '../lib/groupConversation.js'
+import { syncConversationMessagesFromTwilio } from '../lib/conversationMessageSync.js'
 import { randomBytes, randomInt } from 'crypto'
 
 const router = express.Router()
@@ -201,6 +202,14 @@ router.get('/:id', async (req: AuthRequest, res) => {
       .select('*')
       .eq('group_id', groupId)
       .order('confirmed_at', { ascending: false })
+
+    if (group.conversation_sid) {
+      try {
+        await syncConversationMessagesFromTwilio(groupId, group.conversation_sid)
+      } catch (syncErr: any) {
+        console.error('[groups] syncConversationMessagesFromTwilio:', syncErr?.message || syncErr)
+      }
+    }
 
     const { data: messages } = await supabaseAdmin
       .from('group_messages')
