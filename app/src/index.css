@@ -2,11 +2,12 @@
 
 :root {
   --color-primary: #EF8128;
-  --color-cream: #FFF8EE;
+  --color-cream: #FFFBF5;
   --color-cream-alt: #FFF6E8;
-  --color-warm-dark: #3D3A35;
-  --color-warm-grey: #5C5852;
-  --color-warm-light: #8A8580;
+  --color-warm-dark: #2A2621;
+  --color-warm-grey: #736C63;
+  --color-warm-light: #A39A8E;
+  --color-border: #F2E9DC;
   --color-gradient-top: #FFD76B;
   --color-gradient-bottom: #F7A626;
   --color-white: #FFFFFF;
@@ -44,4 +45,53 @@ body {
   border-top-color: #EF8128;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+/* Responsive layout hooks (mobile breakpoints) */
+@media (max-width: 860px) {
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 40px !important;
+  }
+
+  .hero-phone {
+    order: -1;
+    margin: 0 auto;
+  }
+
+  .group-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .group-detail-thread {
+    position: static !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-heading {
+    font-size: 36px !important;
+  }
+
+  .form-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .form-row-label {
+    width: 100% !important;
+  }
+
+  .form-row-field {
+    text-align: left !important;
+  }
+
+  .form-row-subgroup {
+    flex-direction: column !important;
+  }
+
+  .form-card {
+    padding: 16px !important;
+  }
 }

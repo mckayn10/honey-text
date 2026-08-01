@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { apiRequest } from '../lib/api';
@@ -79,11 +79,69 @@ function CheckoutForm({
 				</div>
 			)}
 			<div style={{ marginTop: '1.5rem' }}>
-				<Button type="submit" variant="primary" disabled={!stripe || loading}>
+				<Button type="submit" variant="primary" disabled={!stripe || loading} style={{ borderRadius: 999 }}>
 					{loading ? 'Processing...' : 'Subscribe'}
 				</Button>
 			</div>
 		</form>
+	);
+}
+
+function PlanCard({
+	plan,
+	isCurrent,
+	disabled,
+	busyLabel,
+	onSelect,
+}: {
+	plan: Plan;
+	isCurrent: boolean;
+	disabled: boolean;
+	busyLabel?: string;
+	onSelect: () => void;
+}) {
+	return (
+		<div
+			style={{
+				background: 'white',
+				border: `2px solid ${isCurrent ? theme.primary : theme.border}`,
+				borderRadius: 18,
+				padding: 22,
+				display: 'flex',
+				flexDirection: 'column',
+				gap: 14,
+			}}
+		>
+			<div>
+				<p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: theme.text }}>{plan.label}</p>
+				<p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 900, color: theme.text }}>{plan.priceDisplay}</p>
+			</div>
+			<div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+				<span style={{ fontSize: 13, color: theme.textMuted }}>
+					{plan.maxGroups} group{plan.maxGroups !== 1 ? 's' : ''}
+				</span>
+				<span style={{ fontSize: 13, color: theme.textMuted }}>
+					Up to {plan.maxMembersPerGroup} members per group
+				</span>
+			</div>
+			<Button
+				type="button"
+				disabled={isCurrent || disabled}
+				onClick={onSelect}
+				style={{
+					marginTop: 'auto',
+					borderRadius: 999,
+					padding: '10px 18px',
+					fontSize: '13.5px',
+					width: 'auto',
+					...(isCurrent
+						? { background: theme.successBg, color: theme.successText, border: `1px solid ${theme.successText}` }
+						: { background: theme.primary, color: 'white', border: 'none' }),
+				}}
+			>
+				{isCurrent ? 'Current plan' : busyLabel ?? 'Switch to ' + plan.label}
+			</Button>
+		</div>
 	);
 }
 
@@ -219,18 +277,17 @@ export function Subscribe() {
 	}
 
 	const hasSubscription = status?.subscription_tier && (status.subscription_status === 'active' || status.subscription_status === 'past_due');
+	const currentPlan = plans.find((p) => p.tier === status?.subscription_tier);
 
 	return (
-		<div style={{ padding: '0 0 3rem' }}>
-			<Container maxWidth="narrow">
-				<div style={{ marginBottom: '1rem' }}>
-					<Link to="/app/groups" style={{ color: theme.primary, textDecoration: 'none' }}>
-						← Back to Groups
-					</Link>
-				</div>
-				<h1 style={{ color: theme.text, marginBottom: '1.5rem', fontSize: '1.75rem' }}>
+		<div>
+			<Container maxWidth="default">
+				<h1 style={{ color: theme.text, margin: '0 0 4px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>
 					Billing
 				</h1>
+				<p style={{ color: theme.textLight, fontSize: 14, margin: '0 0 28px' }}>
+					Manage your plan and payment details
+				</p>
 
 				{error && (
 					<Card style={{ marginBottom: '1.5rem', borderColor: theme.dangerBorder, background: theme.dangerBg }}>
@@ -240,13 +297,43 @@ export function Subscribe() {
 
 				{hasSubscription ? (
 					<>
-						<Card>
-							<p style={{ margin: 0, marginBottom: '1rem' }}>
-								You're on the <strong>{status.subscription_tier}</strong> plan.
-							</p>
+						<div
+							style={{
+								background: 'white',
+								border: `1px solid ${theme.border}`,
+								borderRadius: 18,
+								padding: 24,
+								marginBottom: 32,
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+								flexWrap: 'wrap',
+								gap: 16,
+							}}
+						>
+							<div>
+								<span
+									style={{
+										display: 'inline-block',
+										fontSize: 11,
+										fontWeight: 800,
+										color: theme.successText,
+										background: theme.successBg,
+										padding: '4px 10px',
+										borderRadius: 999,
+										marginBottom: 8,
+										textTransform: 'uppercase',
+										letterSpacing: '0.04em',
+									}}
+								>
+									Current plan
+								</span>
+								<p style={{ margin: 0, fontSize: 19, fontWeight: 800, color: theme.text }}>
+									{currentPlan?.label ?? status?.subscription_tier} · {currentPlan?.priceDisplay ?? ''}
+								</p>
+							</div>
 							<Button
 								type="button"
-								variant="primary"
 								onClick={async () => {
 									try {
 										const data = await apiRequest('/billing/portal', { method: 'POST' });
@@ -255,48 +342,26 @@ export function Subscribe() {
 										setError(err.message || 'Failed to open billing portal');
 									}
 								}}
+								style={{ borderRadius: 999, padding: '11px 22px', width: 'auto' }}
 							>
 								Manage billing
 							</Button>
-						</Card>
-						<h2 style={{ marginTop: '1.5rem', marginBottom: '0.75rem', fontSize: '1.15rem' }}>
+						</div>
+
+						<p style={{ color: theme.textLight, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 12px' }}>
 							Change plan
-						</h2>
-						<p style={{ color: theme.textMuted, marginBottom: '1rem', fontSize: '0.95rem' }}>
-							Upgrade or downgrade. Changes are prorated and take effect immediately.
 						</p>
-						<div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-							{plans.map((plan) => {
-								const isCurrent = plan.tier === status?.subscription_tier;
-								return (
-									<Card
-										key={plan.tier}
-										style={{
-											display: 'flex',
-											justifyContent: 'space-between',
-											alignItems: 'center',
-											flexWrap: 'wrap',
-											gap: '1rem',
-										}}
-									>
-										<div>
-											<h3 style={{ margin: 0, fontSize: '1.1rem' }}>{plan.label}</h3>
-											<p style={{ margin: '0.25rem 0 0', color: theme.textMuted, fontSize: '0.95rem' }}>
-												{plan.priceDisplay} · {plan.maxGroups} group{plan.maxGroups !== 1 ? 's' : ''}, up to {plan.maxMembersPerGroup} members per group
-											</p>
-										</div>
-										<Button
-											type="button"
-											variant={isCurrent ? 'default' : 'primary'}
-											disabled={isCurrent || updating}
-											onClick={() => handleRequestChangePlan(plan)}
-											style={isCurrent ? { background: theme.successBg, color: theme.successText, border: `1px solid ${theme.successText}` } : undefined}
-										>
-											{isCurrent ? 'Current plan' : updating ? 'Updating...' : 'Switch to ' + plan.label}
-										</Button>
-									</Card>
-								);
-							})}
+						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+							{plans.map((plan) => (
+								<PlanCard
+									key={plan.tier}
+									plan={plan}
+									isCurrent={plan.tier === status?.subscription_tier}
+									disabled={updating}
+									busyLabel={updating ? 'Updating...' : undefined}
+									onSelect={() => handleRequestChangePlan(plan)}
+								/>
+							))}
 						</div>
 					</>
 				) : clientSecret && subscriptionId ? (
@@ -342,33 +407,16 @@ export function Subscribe() {
 						<p style={{ color: theme.textMuted, marginBottom: '1.5rem' }}>
 							Subscribe to create groups and send weekly questions.
 						</p>
-						<div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
 							{plans.map((plan) => (
-								<Card
+								<PlanCard
 									key={plan.tier}
-									style={{
-										display: 'flex',
-										justifyContent: 'space-between',
-										alignItems: 'center',
-										flexWrap: 'wrap',
-										gap: '1rem',
-									}}
-								>
-									<div>
-										<h3 style={{ margin: 0, fontSize: '1.1rem' }}>{plan.label}</h3>
-										<p style={{ margin: '0.25rem 0 0', color: theme.textMuted, fontSize: '0.95rem' }}>
-											{plan.priceDisplay} · {plan.maxGroups} group{plan.maxGroups !== 1 ? 's' : ''}, up to {plan.maxMembersPerGroup} members per group
-										</p>
-									</div>
-									<Button
-										type="button"
-										variant="primary"
-										disabled={creating}
-										onClick={() => handleSelectPlan(plan)}
-									>
-										{creating ? 'Loading...' : 'Select'}
-									</Button>
-								</Card>
+									plan={plan}
+									isCurrent={false}
+									disabled={creating}
+									busyLabel={creating ? 'Loading...' : 'Select'}
+									onSelect={() => handleSelectPlan(plan)}
+								/>
 							))}
 						</div>
 						{plans.length === 0 && (

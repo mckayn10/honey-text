@@ -11,10 +11,9 @@ export function Card({ children, style = {} }: CardProps) {
       style={{
         background: 'white',
         padding: '1.5rem',
-        borderRadius: 12,
+        borderRadius: 18,
         marginBottom: '1.5rem',
         border: `1px solid ${theme.border}`,
-        boxShadow: theme.shadowCard,
         ...style,
       }}
     >

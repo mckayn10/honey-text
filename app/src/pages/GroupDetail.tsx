@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import { formatPhoneForDisplay, formatPhoneForInput, parsePhoneToDigits } from '../lib/phone';
-import { Container, Button, ButtonLink, FormGroup, Card, Loading, inputStyle, inputFocusStyle } from '../components';
+import { Container, Button, Card, Loading } from '../components';
 import { theme } from '../theme';
 
 interface Group {
@@ -52,17 +52,59 @@ interface UserProfile {
 	phone: string | null;
 }
 
-const listItemStyle: React.CSSProperties = {
-	display: 'flex',
-	justifyContent: 'space-between',
+const pillTagStyle: React.CSSProperties = {
+	display: 'inline-flex',
 	alignItems: 'center',
-	padding: '0.85rem 1rem',
-	background: theme.bgSubtle,
-	borderRadius: 10,
+	gap: 7,
+	padding: '8px 14px',
+	background: 'white',
 	border: `1px solid ${theme.border}`,
+	borderRadius: 999,
+	fontSize: 13,
+	fontWeight: 700,
+	color: '#5C574F',
 };
 
-const sectionHeading: React.CSSProperties = { marginBottom: '1rem', color: theme.text };
+const sectionHeading: React.CSSProperties = {
+	color: theme.text,
+	margin: '0 0 14px',
+	fontSize: 15,
+	fontWeight: 800,
+	textTransform: 'uppercase',
+	letterSpacing: '0.03em',
+};
+
+const pillInputWrapStyle: React.CSSProperties = {
+	flex: '1 1 170px',
+	display: 'flex',
+	alignItems: 'center',
+	gap: 8,
+	background: theme.bg,
+	border: `1px solid ${theme.border}`,
+	borderRadius: 999,
+	padding: '10px 16px',
+};
+
+const pillInputStyle: React.CSSProperties = {
+	border: 'none',
+	background: 'transparent',
+	fontSize: 14,
+	width: '100%',
+	padding: 0,
+	fontFamily: 'inherit',
+};
+
+const peopleTabButtonStyle = (active: boolean): React.CSSProperties => ({
+	background: active ? theme.primaryBg : 'transparent',
+	color: active ? theme.primary : theme.textLight,
+	border: 'none',
+	padding: '9px 16px',
+	borderRadius: 999,
+	fontFamily: 'inherit',
+	fontWeight: 700,
+	fontSize: '13.5px',
+	cursor: 'pointer',
+});
 
 interface QuestionThread {
 	question: GroupMessage;
@@ -85,6 +127,7 @@ export function GroupDetail() {
 	const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 	const [ensuringConversation, setEnsuringConversation] = useState(false);
 	const [conversationError, setConversationError] = useState<string | null>(null);
+	const [peopleTab, setPeopleTab] = useState<'members' | 'pending'>('members');
 	/** From POST /ensure-conversation: Twilio Group MMS needs a Messaging Service on the Conversation */
 	const [messagingHealth, setMessagingHealth] = useState<{
 		bound: boolean;
@@ -256,55 +299,84 @@ export function GroupDetail() {
 		}
 	};
 
-	if (loading) return <div style={{ padding: '0 0 3rem' }}><Loading fullHeight /></div>;
-	if (!group) return <div style={{ padding: '0 0 3rem' }}>Group not found</div>;
+	if (loading) return <div><Loading fullHeight /></div>;
+	if (!group) return <div>Group not found</div>;
 
 	const pendingInvites = invites.filter((i) => i.status === 'pending');
 	const membersWithOwner = getMembersWithOwner(members, userProfile);
 	const { questionThreads, otherMessages } = groupMessagesIntoThreads(threadMessages);
 
 	return (
-		<div style={{ padding: '0 0 3rem' }}>
-			<Container maxWidth="default">
-				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-					<ButtonLink onClick={() => navigate('/app/groups')} style={{ color: theme.primary, textDecoration: 'none' }}>← Back to Groups</ButtonLink>
+		<div>
+			<Container maxWidth={1040}>
+				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+					<Link to="/app/groups" style={{ background: 'none', border: 'none', color: theme.primary, fontWeight: 700, fontSize: '13.5px', textDecoration: 'none' }}>
+						← Back to Groups
+					</Link>
 					<Link
 						to={`/app/groups/${id}/settings`}
-						title="Settings"
+						title="Group settings"
 						aria-label="Group settings"
 						style={{
 							display: 'inline-flex',
 							alignItems: 'center',
 							justifyContent: 'center',
-							padding: '0.5rem',
+							width: 34,
+							height: 34,
 							color: theme.textMuted,
 							textDecoration: 'none',
 							borderRadius: 10,
 						}}
 					>
-						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+						<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
 							<circle cx="12" cy="12" r="3" />
 							<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
 						</svg>
 					</Link>
 				</div>
 
-				<h1 style={{ color: theme.text, margin: '0.5rem 0 1.25rem', fontSize: '2rem', letterSpacing: '-0.02em' }}>
-					{group.name}
-				</h1>
+				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
+					<h1 style={{ color: theme.text, margin: 0, fontSize: 27, fontWeight: 800, letterSpacing: '-0.02em' }}>
+						{group.name}
+					</h1>
+					{group.status === 'active' && (
+						<span
+							style={{
+								display: 'inline-flex',
+								alignItems: 'center',
+								gap: 6,
+								padding: '6px 12px',
+								background: theme.successBg,
+								borderRadius: 999,
+								fontSize: '12.5px',
+								fontWeight: 700,
+								color: theme.successText,
+							}}
+						>
+							<span style={{ width: 6, height: 6, borderRadius: '50%', background: theme.successText }} />
+							Active
+						</span>
+					)}
+				</div>
+				<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 26 }}>
+					<span style={pillTagStyle}>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.primary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M3 9h18M8 2v4M16 2v4" /></svg>
+						{getDayName(group.schedule_day)}
+					</span>
+					<span style={pillTagStyle}>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.primary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></svg>
+						{formatTime12(group.schedule_time)}
+					</span>
+					<span style={pillTagStyle}>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.primary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18" /></svg>
+						{group.schedule_timezone}
+					</span>
+				</div>
 
 				{group.status === 'active' && !group.conversation_sid && (
-					<Card
-						style={{
-							background: theme.bgSubtle,
-							borderColor: theme.border,
-							marginBottom: '1.5rem',
-						}}
-					>
+					<Card style={{ background: theme.bgSubtle, borderColor: theme.border, marginBottom: '1.5rem' }}>
 						{ensuringConversation ? (
-							<p style={{ margin: 0, color: theme.textMuted }}>
-								Setting up messaging…
-							</p>
+							<p style={{ margin: 0, color: theme.textMuted }}>Setting up messaging…</p>
 						) : (
 							<>
 								<p style={{ margin: 0, marginBottom: conversationError ? '0.75rem' : 0, color: theme.textMuted }}>
@@ -343,8 +415,6 @@ export function GroupDetail() {
 								marginBottom: '1.5rem',
 								background: messagingHealthCheckError ? 'rgba(220, 53, 69, 0.10)' : theme.bgSubtle,
 								borderColor: messagingHealthCheckError ? theme.danger : theme.border,
-								borderWidth: 1,
-								borderStyle: 'solid',
 							}}
 						>
 							<p style={{ margin: 0, fontSize: '0.95rem', color: messagingHealthCheckError ? theme.text : theme.textMuted, lineHeight: 1.5 }}>
@@ -360,42 +430,12 @@ export function GroupDetail() {
 				{group.status === 'active' &&
 					group.conversation_sid &&
 					messagingHealth &&
-					messagingHealth.envConfigured &&
-					messagingHealth.bound &&
-					messagingHealth.matchesEnv && (
-						<Card
-							style={{
-								marginBottom: '1.5rem',
-								background: 'rgba(46, 160, 67, 0.10)',
-								borderColor: '#2ea043',
-								borderWidth: 1,
-								borderStyle: 'solid',
-							}}
-						>
-							<p style={{ margin: 0, fontSize: '0.95rem', color: theme.text, lineHeight: 1.5 }}>
-								<strong style={{ display: 'block', marginBottom: '0.35rem' }}>Group text threading ready</strong>
-								This group’s conversation is correctly bound to your configured Messaging Service. Messages should send as one shared group thread (carrier/device behavior can still vary).
-							</p>
-						</Card>
-					)}
-
-				{group.status === 'active' &&
-					group.conversation_sid &&
-					messagingHealth &&
 					!(
 						messagingHealth.envConfigured &&
 						messagingHealth.bound &&
 						messagingHealth.matchesEnv
 					) && (
-						<Card
-							style={{
-								marginBottom: '1.5rem',
-								background: 'rgba(220, 53, 69, 0.10)',
-								borderColor: theme.danger,
-								borderWidth: 1,
-								borderStyle: 'solid',
-							}}
-						>
+						<Card style={{ marginBottom: '1.5rem', background: theme.dangerBg, borderColor: theme.danger }}>
 							<p style={{ margin: 0, fontSize: '0.95rem', color: theme.text, lineHeight: 1.5 }}>
 								<strong style={{ display: 'block', marginBottom: '0.35rem' }}>Group text threading</strong>
 								{!messagingHealth.bound ? (
@@ -422,184 +462,147 @@ export function GroupDetail() {
 						</Card>
 					)}
 
-				<Card>
-					<p style={{ margin: 0 }}>
-						<strong>Schedule:</strong> {getDayName(group.schedule_day)} at {formatTime12(group.schedule_time)} ({group.schedule_timezone})
-					</p>
-				</Card>
-
-				<Card>
-					<h2 style={sectionHeading}>Text thread</h2>
-					<p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: theme.textMuted, lineHeight: 1.45 }}>
-						Messages we log from your group’s SMS thread (weekly questions and replies). Full history stays in your phone’s Messages app.
-					</p>
-					{threadMessages.length === 0 ? (
-						<p style={{ margin: 0, color: theme.textMuted, fontStyle: 'italic', fontSize: '0.95rem' }}>
-							No messages yet. After the first weekly question or a reply in the group text, they will show up here.
-						</p>
-					) : (
-						<div
-							style={{
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '1rem',
-								maxHeight: 'min(520px, 60vh)',
-								overflowY: 'auto',
-							}}
-						>
-							{otherMessages.map((msg) => (
-								<div key={msg.id} style={messageRowStyle}>
-									<MessageRow msg={msg} members={membersWithOwner} />
-								</div>
-							))}
-							{[...questionThreads].reverse().map((thread) => (
-								<div
-									key={thread.question.id}
-									style={{
-										...messageRowStyle,
-										display: 'flex',
-										flexDirection: 'column',
-										gap: '0.75rem',
-									}}
-								>
-									<MessageRow msg={thread.question} members={membersWithOwner} />
-									<div
-										style={{
-											marginLeft: '0.5rem',
-											paddingLeft: '0.85rem',
-											borderLeft: `3px solid ${theme.border}`,
-											display: 'flex',
-											flexDirection: 'column',
-											gap: '0.65rem',
-										}}
-									>
-										<p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-											Replies ({thread.replies.length})
-										</p>
-										{thread.replies.length === 0 ? (
-											<p style={{ margin: 0, color: theme.textMuted, fontStyle: 'italic', fontSize: '0.9rem' }}>
-												No replies yet.
-											</p>
-										) : (
-											thread.replies.map((reply) => (
-												<div
-													key={reply.id}
-													style={{
-														padding: '0.65rem 0.75rem',
-														background: theme.bg,
-														borderRadius: 8,
-														border: `1px solid ${theme.border}`,
-													}}
-												>
-													<MessageRow msg={reply} members={membersWithOwner} compact />
-												</div>
-											))
-										)}
+				<div className="group-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, alignItems: 'start' }}>
+					<div>
+						<div style={{ background: 'white', border: `1px solid ${theme.border}`, borderRadius: 18, padding: 22, marginBottom: 18 }}>
+							<h2 style={sectionHeading}>Invite someone</h2>
+							<form onSubmit={handleCreateInvite}>
+								{error && (
+									<div style={{ backgroundColor: theme.errorBg, color: theme.errorText, padding: '0.75rem', borderRadius: 8, marginBottom: '1rem' }}>
+										{error}
 									</div>
+								)}
+								<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+									<div style={pillInputWrapStyle}>
+										<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={theme.textLight} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+										<input
+											type="text"
+											placeholder="Full name"
+											value={inviteeName}
+											onChange={(e) => setInviteeName(e.target.value)}
+											required
+											style={pillInputStyle}
+										/>
+									</div>
+									<div style={pillInputWrapStyle}>
+										<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={theme.textLight} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+										<input
+											type="tel"
+											placeholder="(111) 111-1111"
+											value={formatPhoneForInput(inviteePhone)}
+											onChange={(e) => setInviteePhone(parsePhoneToDigits(e.target.value))}
+											required
+											maxLength={14}
+											style={pillInputStyle}
+										/>
+									</div>
+									<Button type="submit" variant="primary" disabled={submitting} style={{ borderRadius: 999, padding: '11px 22px', fontSize: '13.5px', width: 'auto', whiteSpace: 'nowrap' }}>
+										{submitting ? 'Creating...' : 'Send invite'}
+									</Button>
 								</div>
-							))}
+							</form>
 						</div>
-					)}
-				</Card>
 
-				<Card>
-					<h2 style={sectionHeading}>Invite Members</h2>
-					<form onSubmit={handleCreateInvite} style={{ marginTop: '1rem' }}>
-						{error && (
-							<div style={{ backgroundColor: theme.errorBg, color: theme.errorText, padding: '0.75rem', borderRadius: 4, marginBottom: '1rem' }}>
-								{error}
+						<div style={{ background: 'white', border: `1px solid ${theme.border}`, borderRadius: 18, padding: 22 }}>
+							<div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+								<button type="button" onClick={() => setPeopleTab('members')} style={peopleTabButtonStyle(peopleTab === 'members')}>
+									Members · {membersWithOwner.length}
+								</button>
+								<button type="button" onClick={() => setPeopleTab('pending')} style={peopleTabButtonStyle(peopleTab === 'pending')}>
+									Pending · {pendingInvites.length}
+								</button>
+							</div>
+
+							{peopleTab === 'members' ? (
+								membersWithOwner.length === 0 ? (
+									<p style={{ color: theme.textLight, fontStyle: 'italic', margin: 0 }}>No confirmed members yet</p>
+								) : (
+									<div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+										{membersWithOwner.map((member) => (
+											<div key={member.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 4px', borderBottom: `1px solid ${theme.borderLight}`, gap: 12, flexWrap: 'wrap' }}>
+												<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+													<div style={{ width: 32, height: 32, borderRadius: '50%', background: theme.primaryBg, color: theme.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+														{member.name.charAt(0).toUpperCase()}
+													</div>
+													<div>
+														<span style={{ fontWeight: 700, color: theme.text, fontSize: 14 }}>{member.name}</span>
+														<span style={{ display: 'block', fontSize: '12.5px', color: theme.textLight }}>
+															{member.phone ? formatPhoneForDisplay(member.phone) : 'No phone on file'}
+														</span>
+														{member.isOwner && !member.phone && (
+															<span style={{ display: 'block', color: theme.danger, fontWeight: 600, fontSize: '0.85rem' }}>
+																Add your phone in <Link to="/app/profile" style={{ color: theme.danger, textDecoration: 'underline' }}>Profile</Link>
+															</span>
+														)}
+													</div>
+												</div>
+												{member.isOwner ? (
+													<span style={{ fontSize: '11.5px', fontWeight: 700, color: theme.textLight }}>You</span>
+												) : (
+													<Button type="button" variant="danger" size="small" onClick={() => handleDeleteMember(member.id)} style={{ width: 'auto' }}>
+														Remove
+													</Button>
+												)}
+											</div>
+										))}
+									</div>
+								)
+							) : pendingInvites.length === 0 ? (
+								<p style={{ color: theme.textLight, fontStyle: 'italic', margin: 0 }}>No pending invites</p>
+							) : (
+								<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+									{pendingInvites.map((invite) => (
+										<div key={invite.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 4px', gap: 12, flexWrap: 'wrap', borderBottom: `1px solid ${theme.borderLight}` }}>
+											<div>
+												<span style={{ fontWeight: 700, color: theme.text, fontSize: 14 }}>{invite.invitee_name}</span>
+												<span style={{ color: theme.textLight, fontSize: '13.5px' }}> · {formatPhoneForDisplay(invite.invitee_phone)}</span>
+												{invite.accept_code && (
+													<span style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.9rem', color: theme.textMuted }}>
+														Reply YES {invite.accept_code} to accept
+													</span>
+												)}
+											</div>
+											<div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+												<Button type="button" size="small" onClick={() => copyInviteLink(invite.token)}>
+													Copy Link
+												</Button>
+												<Button type="button" variant="danger" size="small" onClick={() => handleDeleteInvite(invite.id)}>
+													Cancel
+												</Button>
+											</div>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+					</div>
+
+					<div className="group-detail-thread" style={{ background: 'white', border: `1px solid ${theme.border}`, borderRadius: 18, padding: 24, position: 'sticky', top: 20 }}>
+						<h2 style={sectionHeading}>Text thread</h2>
+						<p style={{ margin: '-8px 0 14px', fontSize: '0.85rem', color: theme.textLight, lineHeight: 1.45 }}>
+							Messages logged from your group’s SMS thread. Full history stays in your phone’s Messages app.
+						</p>
+						{threadMessages.length === 0 ? (
+							<p style={{ margin: 0, color: theme.textLight, fontStyle: 'italic', fontSize: '0.95rem' }}>
+								No messages yet. After the first weekly question or a reply in the group text, they will show up here.
+							</p>
+						) : (
+							<div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 'min(560px, 65vh)', overflowY: 'auto' }}>
+								{otherMessages.map((msg) => (
+									<MessageBubble key={msg.id} msg={msg} members={membersWithOwner} />
+								))}
+								{[...questionThreads].reverse().map((thread) => (
+									<div key={thread.question.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+										<MessageBubble msg={thread.question} members={membersWithOwner} />
+										{thread.replies.map((reply) => (
+											<MessageBubble key={reply.id} msg={reply} members={membersWithOwner} />
+										))}
+									</div>
+								))}
 							</div>
 						)}
-						<div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-							<FormGroup label="Name" htmlFor="inviteeName" style={{ flex: '1 1 220px', marginBottom: 0 }}>
-								<input
-									id="inviteeName"
-									type="text"
-									value={inviteeName}
-									onChange={(e) => setInviteeName(e.target.value)}
-									required
-									style={inputStyle}
-									onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
-									onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: theme.borderLight, boxShadow: 'none' })}
-								/>
-							</FormGroup>
-							<FormGroup label="Phone Number" htmlFor="inviteePhone" style={{ flex: '1 1 220px', marginBottom: 0 }}>
-								<input
-									id="inviteePhone"
-									type="tel"
-									value={formatPhoneForInput(inviteePhone)}
-									onChange={(e) => setInviteePhone(parsePhoneToDigits(e.target.value))}
-									required
-									placeholder="(111) 111-1111"
-									maxLength={14}
-									style={inputStyle}
-									onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
-									onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: theme.borderLight, boxShadow: 'none' })}
-								/>
-							</FormGroup>
-							<Button type="submit" variant="primary" disabled={submitting}>
-								{submitting ? 'Creating...' : 'Create Invite'}
-							</Button>
-						</div>
-					</form>
-				</Card>
-
-				<Card>
-					<h2 style={sectionHeading}>Confirmed Members</h2>
-					{membersWithOwner.length === 0 ? (
-						<p style={{ color: theme.textMuted, fontStyle: 'italic' }}>No confirmed members yet</p>
-					) : (
-						<div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-							{membersWithOwner.map((member: MemberWithOwner) => (
-								<div key={member.id} style={listItemStyle}>
-									<div>
-										<strong>{member.name}</strong> - {member.phone ? formatPhoneForDisplay(member.phone) : 'No phone on file'}
-										{member.isOwner && !member.phone && (
-											<span style={{ display: 'inline-block', marginLeft: '0.5rem', color: theme.danger, fontWeight: 600, fontSize: '0.9rem' }}>
-												Add your phone in <Link to="/app/profile" style={{ color: theme.danger, textDecoration: 'underline' }}>Profile</Link>
-											</span>
-										)}
-									</div>
-									{!member.isOwner && (
-										<Button type="button" variant="danger" size="small" onClick={() => handleDeleteMember(member.id)} style={{ width: 'auto' }}>
-											Remove
-										</Button>
-									)}
-								</div>
-							))}
-						</div>
-					)}
-				</Card>
-
-				<Card>
-					<h2 style={sectionHeading}>Pending Invites</h2>
-					{pendingInvites.length === 0 ? (
-						<p style={{ color: theme.textMuted, fontStyle: 'italic' }}>No pending invites</p>
-					) : (
-						<div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-							{pendingInvites.map((invite) => (
-								<div key={invite.id} style={listItemStyle}>
-									<div>
-										<strong>{invite.invitee_name}</strong> - {formatPhoneForDisplay(invite.invitee_phone)}
-										{invite.accept_code && (
-											<span style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.9rem', color: theme.textMuted }}>
-												Reply YES {invite.accept_code} to accept
-											</span>
-										)}
-									</div>
-									<div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-										<Button type="button" size="small" onClick={() => copyInviteLink(invite.token)}>
-											Copy Link
-										</Button>
-										<Button type="button" variant="danger" size="small" onClick={() => handleDeleteInvite(invite.id)}>
-											Delete
-										</Button>
-									</div>
-								</div>
-							))}
-						</div>
-					)}
-				</Card>
+					</div>
+				</div>
 			</Container>
 		</div>
 	);
@@ -675,46 +678,36 @@ function messageAuthorLabel(msg: GroupMessage, members: MemberWithOwner[]): stri
 	return author;
 }
 
-function MessageRow({
+function MessageBubble({
 	msg,
 	members,
-	compact = false,
 }: {
 	msg: GroupMessage;
 	members: MemberWithOwner[];
-	compact?: boolean;
 }) {
+	const outbound = msg.direction === 'outbound';
 	return (
-		<div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-			<div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-				<span style={{ fontWeight: 600, fontSize: compact ? '0.84rem' : '0.88rem', color: theme.text }}>
-					{messageAuthorLabel(msg, members)}
-				</span>
-				<span style={{ fontSize: '0.8rem', color: theme.textLight }}>
-					{formatMessageTimestamp(msg.created_at)}
-				</span>
-			</div>
-			<p
+		<div style={{ display: 'flex', flexDirection: 'column', alignItems: outbound ? 'flex-start' : 'flex-end' }}>
+			<div
 				style={{
-					margin: 0,
+					maxWidth: '92%',
+					background: outbound ? theme.primaryBg : theme.primary,
+					color: outbound ? theme.text : 'white',
+					padding: outbound ? '12px 16px' : '11px 15px',
+					borderRadius: outbound ? '16px 16px 16px 4px' : '16px 16px 4px 16px',
+					fontSize: 14,
+					lineHeight: 1.5,
 					whiteSpace: 'pre-wrap',
-					fontSize: compact ? '0.9rem' : '0.95rem',
-					lineHeight: 1.45,
-					color: theme.text,
 				}}
 			>
 				{msg.body ?? ''}
-			</p>
+			</div>
+			<div style={{ fontSize: '11.5px', color: theme.textLight, marginTop: 3, padding: '0 2px' }}>
+				{messageAuthorLabel(msg, members)} · {formatMessageTimestamp(msg.created_at)}
+			</div>
 		</div>
 	);
 }
-
-const messageRowStyle: React.CSSProperties = {
-	padding: '0.85rem 1rem',
-	background: theme.bgSubtle,
-	borderRadius: 10,
-	border: `1px solid ${theme.border}`,
-};
 
 function formatMessageTimestamp(iso: string): string {
 	try {

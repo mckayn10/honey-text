@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
-import {
-	Container,
-	Button,
-	FormGroup,
-	Card,
-	Loading,
-	inputStyle,
-} from '../components';
+import { Container, Button, Loading } from '../components';
 import { theme } from '../theme';
 
 interface Group {
@@ -19,7 +12,65 @@ interface Group {
 	schedule_timezone: string;
 }
 
-const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' };
+const iconRowStyle: React.CSSProperties = {
+	display: 'flex',
+	alignItems: 'center',
+	gap: 14,
+	padding: '16px 20px',
+	borderBottom: `1px solid ${theme.borderLight}`,
+	flexWrap: 'wrap',
+};
+
+const rowLabelStyle: React.CSSProperties = {
+	flex: 1,
+	fontSize: '14.5px',
+	fontWeight: 700,
+	color: theme.text,
+};
+
+const rowFieldStyle: React.CSSProperties = {
+	border: 'none',
+	background: 'transparent',
+	fontSize: '14.5px',
+	color: theme.textMuted,
+	textAlign: 'right',
+	fontFamily: 'inherit',
+};
+
+function CalendarIcon() {
+	return (
+		<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.primary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+			<rect x="3" y="4" width="18" height="18" rx="3" />
+			<path d="M3 9h18M8 2v4M16 2v4" />
+		</svg>
+	);
+}
+
+function ClockIcon() {
+	return (
+		<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.primary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+			<circle cx="12" cy="12" r="9" />
+			<path d="M12 7v5l3 3" />
+		</svg>
+	);
+}
+
+function GlobeIcon() {
+	return (
+		<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.primary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+			<circle cx="12" cy="12" r="9" />
+			<path d="M3 12h18M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18" />
+		</svg>
+	);
+}
+
+function TrashIcon() {
+	return (
+		<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+			<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6" />
+		</svg>
+	);
+}
 
 export function GroupSettings() {
 	const { id } = useParams<{ id: string }>();
@@ -114,78 +165,54 @@ export function GroupSettings() {
 	if (!group) return null;
 
 	return (
-		<div style={{ padding: '0rem 0 3rem' }}>
+		<div>
 			<Container maxWidth="narrow">
-				<div style={{ marginBottom: '1rem' }}>
-					<Link
-						to={`/app/groups/${id}`}
-						style={{
-							color: theme.primary,
-							textDecoration: 'none',
-							fontSize: '0.95rem',
-						}}
-					>
-						← Back to Group
-					</Link>
-				</div>
-				<h1
+				<Link
+					to={`/app/groups/${id}`}
 					style={{
-						color: theme.text,
-						marginBottom: '1.5rem',
-						fontSize: '1.75rem',
-						letterSpacing: '-0.02em',
+						color: theme.primary,
+						textDecoration: 'none',
+						fontWeight: 700,
+						fontSize: '13.5px',
+						display: 'inline-block',
+						marginBottom: 14,
 					}}
 				>
-					Settings: {group.name}
+					← Back to Group
+				</Link>
+				<h1 style={{ color: theme.text, margin: '0 0 4px', fontSize: 25, fontWeight: 800, letterSpacing: '-0.02em' }}>
+					Settings
 				</h1>
+				<p style={{ color: theme.textLight, fontSize: '13.5px', margin: '0 0 24px' }}>{group.name}</p>
 
-				<Card>
-					<h2
+				{error && (
+					<div
 						style={{
-							color: theme.text,
-							fontSize: '1.15rem',
-							marginBottom: '0.5rem',
+							backgroundColor: theme.errorBg,
+							color: theme.errorText,
+							padding: '0.75rem',
+							borderRadius: 8,
+							marginBottom: '1rem',
 						}}
 					>
-						Question time
-					</h2>
-					<p
-						style={{
-							color: theme.textMuted,
-							fontSize: '0.95rem',
-							marginBottom: '1.25rem',
-							lineHeight: 1.45,
-						}}
-					>
-						When the weekly question is sent to this group (in the
-						timezone below).
-					</p>
-					<form onSubmit={handleSaveSchedule}>
-						{error && (
-							<div
-								style={{
-									backgroundColor: theme.errorBg,
-									color: theme.errorText,
-									padding: '0.75rem',
-									borderRadius: 4,
-									marginBottom: '1rem',
-								}}
-							>
-								{error}
-							</div>
-						)}
-						<FormGroup
-							label="Day of week"
-							htmlFor="scheduleDay"
-						>
+						{error}
+					</div>
+				)}
+
+				<p style={{ color: theme.textLight, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 10px' }}>
+					Weekly schedule
+				</p>
+				<form onSubmit={handleSaveSchedule}>
+					<div style={{ background: 'white', border: `1px solid ${theme.border}`, borderRadius: 16, marginBottom: 26, overflow: 'hidden' }}>
+						<div style={iconRowStyle}>
+							<CalendarIcon />
+							<span style={rowLabelStyle}>Day of week</span>
 							<select
 								id="scheduleDay"
 								value={scheduleDay}
-								onChange={(e) =>
-									setScheduleDay(Number(e.target.value))
-								}
+								onChange={(e) => setScheduleDay(Number(e.target.value))}
 								required
-								style={selectStyle}
+								style={{ ...rowFieldStyle, cursor: 'pointer' }}
 							>
 								<option value={0}>Sunday</option>
 								<option value={1}>Monday</option>
@@ -195,97 +222,66 @@ export function GroupSettings() {
 								<option value={5}>Friday</option>
 								<option value={6}>Saturday</option>
 							</select>
-						</FormGroup>
-						<FormGroup
-							label="Time"
-							htmlFor="scheduleTime"
-						>
+						</div>
+						<div style={iconRowStyle}>
+							<ClockIcon />
+							<span style={rowLabelStyle}>Time</span>
 							<input
 								id="scheduleTime"
 								type="time"
 								value={scheduleTime}
-								onChange={(e) =>
-									setScheduleTime(e.target.value)
-								}
+								onChange={(e) => setScheduleTime(e.target.value)}
 								required
-								style={inputStyle}
+								style={rowFieldStyle}
 							/>
-						</FormGroup>
-						<FormGroup
-							label="Timezone"
-							htmlFor="scheduleTimezone"
-						>
+						</div>
+						<div style={{ ...iconRowStyle, borderBottom: 'none' }}>
+							<GlobeIcon />
+							<span style={rowLabelStyle}>Timezone</span>
 							<select
 								id="scheduleTimezone"
 								value={scheduleTimezone}
-								onChange={(e) =>
-									setScheduleTimezone(e.target.value)
-								}
+								onChange={(e) => setScheduleTimezone(e.target.value)}
 								required
-								style={selectStyle}
+								style={{ ...rowFieldStyle, cursor: 'pointer' }}
 							>
-								<option value="America/Los_Angeles">
-									Pacific Time
-								</option>
-								<option value="America/Denver">
-									Mountain Time
-								</option>
-								<option value="America/Chicago">
-									Central Time
-								</option>
-								<option value="America/New_York">
-									Eastern Time
-								</option>
+								<option value="America/Los_Angeles">Pacific Time</option>
+								<option value="America/Denver">Mountain Time</option>
+								<option value="America/Chicago">Central Time</option>
+								<option value="America/New_York">Eastern Time</option>
 							</select>
-						</FormGroup>
-						<div style={{ marginTop: '2rem' }}>
-							<Button
-								type="submit"
-								variant="primary"
-								disabled={saving}
-							>
-								{saving ? 'Saving...' : 'Save schedule'}
-							</Button>
 						</div>
-					</form>
-				</Card>
+					</div>
+					<div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-14px 0 30px' }}>
+						<Button type="submit" variant="primary" disabled={saving} style={{ borderRadius: 999, padding: '11px 22px', fontSize: '13.5px' }}>
+							{saving ? 'Saving...' : 'Save changes'}
+						</Button>
+					</div>
+				</form>
 
-				<Card
-					style={{
-						borderColor: theme.dangerBorder,
-						background: '#fffbfb',
-					}}
-				>
-					<h2
-						style={{
-							color: theme.text,
-							fontSize: '1.15rem',
-							marginBottom: '0.5rem',
-						}}
-					>
-						Delete group
-					</h2>
-					<p
-						style={{
-							color: theme.textMuted,
-							fontSize: '0.95rem',
-							marginBottom: '1.25rem',
-							lineHeight: 1.45,
-						}}
-					>
-						Permanently delete this group and its conversation.
-						Invites and member list will be removed. This cannot be
-						undone.
-					</p>
+				<p style={{ color: theme.textLight, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 10px' }}>
+					Danger zone
+				</p>
+				<div style={{ background: 'white', border: `1px solid ${theme.border}`, borderRadius: 16, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+					<div style={{ width: 38, height: 38, borderRadius: 11, background: theme.dangerBg, color: theme.danger, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+						<TrashIcon />
+					</div>
+					<div style={{ flex: '1 1 160px' }}>
+						<p style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: theme.text }}>Delete this group</p>
+						<p style={{ margin: '2px 0 0', fontSize: 13, color: theme.textLight }}>
+							Removes the conversation, members, and invites. Cannot be undone.
+						</p>
+					</div>
 					<Button
 						type="button"
 						variant="danger"
 						disabled={deleting}
 						onClick={handleDeleteGroup}
+						style={{ width: 'auto', borderRadius: 999, padding: '10px 18px', fontSize: '13.5px', whiteSpace: 'nowrap' }}
 					>
-						{deleting ? 'Deleting...' : 'Delete group'}
+						{deleting ? 'Deleting...' : 'Delete'}
 					</Button>
-				</Card>
+				</div>
 			</Container>
 		</div>
 	);

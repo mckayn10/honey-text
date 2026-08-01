@@ -1,323 +1,289 @@
 import { Link } from 'react-router-dom';
-import { Container, ButtonLink } from '../components';
+import { Container, ButtonLink, Logo } from '../components';
 import { theme } from '../theme';
 
-// Honeycomb pattern SVG
-const honeycombPattern = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23EF8128' fill-opacity='0.04'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5V28.97h-.01L17 36.35V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`;
+const steps = [
+	{ n: '1', title: 'Create a group', desc: 'Name your group and add members by phone number.' },
+	{ n: '2', title: 'Invite via text', desc: 'Members get an SMS or web invite with opt-in disclosure.' },
+	{ n: '3', title: 'Weekly questions', desc: 'Each week, a discussion question goes out to the group by text.' },
+];
 
-// Sparkle doodle SVG
-const sparkleDoodle = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23EF8128' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83'/%3E%3C/svg%3E")`;
-
-// Heart doodle SVG
-const heartDoodle = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23EF8128' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'/%3E%3C/svg%3E")`;
+const chatBubble: React.CSSProperties = {
+	maxWidth: '78%',
+	padding: '10px 14px',
+	fontSize: 13.5,
+	lineHeight: 1.5,
+};
 
 export function Landing() {
 	return (
-		<div
-			style={{
-				minHeight: '100vh',
-				backgroundColor: theme.bg,
-				position: 'relative',
-				overflow: 'hidden',
-			}}
-		>
-			{/* Honeycomb pattern background */}
-			<div
+		<div style={{ minHeight: '100vh', backgroundColor: theme.bg, color: theme.text }}>
+			<header
 				style={{
-					position: 'absolute',
-					top: 0,
-					left: 0,
-					right: 0,
-					bottom: 0,
-					backgroundImage: honeycombPattern,
-					pointerEvents: 'none',
-					zIndex: 0,
+					padding: '22px 0',
+					borderBottom: `1px solid ${theme.headerBorder}`,
 				}}
-			/>
-
-			{/* Content wrapper */}
-			<div style={{ position: 'relative', zIndex: 1 }}>
-				{/* Same header style as AppLayout */}
-				<header
-					style={{
-						background: theme.bg,
-						padding: '0.5rem 0',
-						borderBottom: `1px solid ${theme.headerBorder}`,
-						flexShrink: 0,
-					}}
-				>
-					<Container maxWidth="wide">
-						<div
-							style={{
-								display: 'flex',
-								justifyContent: 'space-between',
-								alignItems: 'center',
-							}}
-						>
-							<Link
-								to="/"
-								style={{
-									display: 'flex',
-									alignItems: 'center',
-									textDecoration: 'none',
-									color: 'inherit',
-								}}
-							>
-							<img
-								src="/logo.png"
-								alt="HoneyText"
-								style={{
-									height: 60,
-									width: 'auto',
-									borderRadius: 10,
-								}}
-							/>
-							</Link>
-							<div
-								style={{
-									display: 'flex',
-									gap: '1rem',
-									alignItems: 'center',
-								}}
-							>
-								<ButtonLink to="/login" style={{ textDecoration: 'none' }}>Log in</ButtonLink>
-								<Link
-									to="/signup"
-									style={{
-										backgroundColor: theme.primary,
-										color: 'white',
-										border: 'none',
-										padding: '0.6rem 1.75rem',
-										borderRadius: 14,
-										textDecoration: 'none',
-										display: 'inline-block',
-										fontWeight: 600,
-										boxShadow: '0 2px 8px rgba(239, 129, 40, 0.2)',
-										transition: 'all 0.2s ease',
-									}}
-									onMouseEnter={(e) => {
-										e.currentTarget.style.transform = 'translateY(-2px)';
-										e.currentTarget.style.boxShadow = '0 4px 14px rgba(239, 129, 40, 0.3)';
-									}}
-									onMouseLeave={(e) => {
-										e.currentTarget.style.transform = 'translateY(0)';
-										e.currentTarget.style.boxShadow = '0 2px 8px rgba(239, 129, 40, 0.2)';
-									}}
-								>
-									Sign up
-								</Link>
-							</div>
-						</div>
-					</Container>
-				</header>
-
-				<main style={{ padding: '4rem 0', position: 'relative' }}>
-					{/* Sparkle doodle - top right */}
-					<div
-						style={{
-							position: 'absolute',
-							top: '40px',
-							right: '10%',
-							width: 60,
-							height: 60,
-							backgroundImage: sparkleDoodle,
-							backgroundSize: 'contain',
-							backgroundRepeat: 'no-repeat',
-							transform: 'rotate(15deg)',
-							opacity: 0.6,
-							pointerEvents: 'none',
-						}}
-					/>
-					{/* Heart doodle - bottom left */}
-					<div
-						style={{
-							position: 'absolute',
-							bottom: '20%',
-							left: '5%',
-							width: 40,
-							height: 40,
-							backgroundImage: heartDoodle,
-							backgroundSize: 'contain',
-							backgroundRepeat: 'no-repeat',
-							transform: 'rotate(-10deg)',
-							opacity: 0.6,
-							pointerEvents: 'none',
-						}}
-					/>
-
-					<Container
-						maxWidth={800}
-						style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}
-					>
-						<div style={{ paddingTop: '3rem' }}>
-							<p
-								style={{
-									fontSize: '1.5rem',
-									color: theme.primary,
-									fontWeight: 700,
-									marginBottom: '1rem',
-									letterSpacing: '-0.01em',
-								}}
-							>
-								Little questions. Deeper connections.
-							</p>
-							<h1
-								style={{
-									fontSize: '3.5rem',
-									fontWeight: 800,
-									marginBottom: '1.25rem',
-									color: theme.text,
-									letterSpacing: '-0.02em',
-									lineHeight: 1.2,
-								}}
-							>
-								Tiny texts that mean a lot
-							</h1>
-							<p
-								style={{
-									fontSize: '1.25rem',
-									color: theme.textMuted,
-									marginBottom: '2.5rem',
-									lineHeight: 1.8,
-									maxWidth: 600,
-									marginLeft: 'auto',
-									marginRight: 'auto',
-								}}
-							>
-								A weekly nudge to grow closer. Send thoughtful questions to
-								your partner, family, or friends via text message.
-							</p>
-
-							{/* Improved CTA Button */}
+			>
+				<Container maxWidth="wide">
+					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+						<Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
+							<Logo size={26} />
+						</Link>
+						<div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+							<ButtonLink to="/login" style={{ textDecoration: 'none', fontWeight: 600, color: theme.textMuted, padding: '10px 14px' }}>
+								Log in
+							</ButtonLink>
 							<Link
 								to="/signup"
 								style={{
-									display: 'inline-block',
-									padding: '1.1rem 2.75rem',
-									borderRadius: 16,
-									textDecoration: 'none',
-									fontWeight: 600,
-									fontSize: '1.15rem',
-									backgroundColor: theme.primary,
+									background: theme.primary,
 									color: 'white',
-									border: `2px solid ${theme.primary}`,
-									boxShadow: '0 4px 14px rgba(239, 129, 40, 0.25), 0 1px 3px rgba(239, 129, 40, 0.15)',
-									transition: 'all 0.25s ease',
-									cursor: 'pointer',
+									border: 'none',
+									padding: '11px 24px',
+									borderRadius: 999,
+									fontWeight: 700,
+									fontSize: 15,
+									textDecoration: 'none',
+									display: 'inline-block',
+									transition: 'background 0.2s ease',
 								}}
-								onMouseEnter={(e) => {
-									e.currentTarget.style.transform = 'translateY(-3px)';
-									e.currentTarget.style.boxShadow = '0 8px 24px rgba(239, 129, 40, 0.35), 0 2px 6px rgba(239, 129, 40, 0.2)';
-									e.currentTarget.style.backgroundColor = 'white';
-									e.currentTarget.style.color = theme.primary;
-								}}
-								onMouseLeave={(e) => {
-									e.currentTarget.style.transform = 'translateY(0)';
-									e.currentTarget.style.boxShadow = '0 4px 14px rgba(239, 129, 40, 0.25), 0 1px 3px rgba(239, 129, 40, 0.15)';
-									e.currentTarget.style.backgroundColor = theme.primary;
-									e.currentTarget.style.color = 'white';
+								onMouseEnter={(e) => { e.currentTarget.style.background = theme.primaryHover; }}
+								onMouseLeave={(e) => { e.currentTarget.style.background = theme.primary; }}
+							>
+								Sign up
+							</Link>
+						</div>
+					</div>
+				</Container>
+			</header>
+
+			<main style={{ padding: '72px 0 0' }}>
+				<Container maxWidth="wide">
+					<div
+						className="hero-grid"
+						style={{
+							display: 'grid',
+							gridTemplateColumns: '1.1fr 0.9fr',
+							gap: 56,
+							alignItems: 'center',
+						}}
+					>
+						<div>
+							<p
+								style={{
+									fontSize: 16,
+									color: theme.primary,
+									fontWeight: 800,
+									margin: '0 0 16px',
+									letterSpacing: '0.02em',
+									textTransform: 'uppercase',
 								}}
 							>
-								Start connecting 💛
-							</Link>
+								Little questions, deeper connections
+							</p>
+							<h1
+								className="hero-heading"
+								style={{
+									fontSize: 52,
+									fontWeight: 900,
+									margin: '0 0 22px',
+									letterSpacing: '-0.03em',
+									lineHeight: 1.1,
+									color: theme.text,
+								}}
+							>
+								A weekly text
+								<br />
+								that brings you
+								<br />
+								closer together
+							</h1>
+							<p
+								style={{
+									fontSize: 18,
+									color: theme.textMuted,
+									margin: '0 0 32px',
+									lineHeight: 1.7,
+									maxWidth: 440,
+								}}
+							>
+								Thoughtful questions, sent right to the group chat — for
+								couples, families, and friends who want to stay close.
+							</p>
+							<div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+								<Link
+									to="/signup"
+									style={{
+										padding: '16px 34px',
+										borderRadius: 999,
+										fontWeight: 700,
+										fontSize: 16,
+										background: theme.primary,
+										color: 'white',
+										border: 'none',
+										textDecoration: 'none',
+										display: 'inline-block',
+										boxShadow: `0 6px 16px ${theme.primaryShadow}`,
+										transition: 'background 0.2s ease',
+									}}
+									onMouseEnter={(e) => { e.currentTarget.style.background = theme.primaryHover; }}
+									onMouseLeave={(e) => { e.currentTarget.style.background = theme.primary; }}
+								>
+									Start connecting
+								</Link>
+								<span style={{ color: theme.textLight, fontSize: 14 }}>
+									Free to try · no credit card
+								</span>
+							</div>
 						</div>
 
-						{/* How it works */}
-						<div
-							style={{
-								marginTop: '5rem',
-								display: 'grid',
-								gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-								gap: '2rem',
-								textAlign: 'center',
-							}}
-						>
-							{[
-								{ step: '1', title: 'Create a group', desc: 'Name your group and add members by phone number.' },
-								{ step: '2', title: 'Invite via text', desc: 'Members get an SMS or web invite with opt-in disclosure.' },
-								{ step: '3', title: 'Weekly questions', desc: 'Each week, a discussion question is sent to the group via text message.' },
-							].map((item) => (
-								<div key={item.step} style={{ padding: '1.5rem' }}>
+						<div className="hero-phone" style={{ display: 'flex', justifyContent: 'center' }}>
+							<div
+								style={{
+									position: 'relative',
+									width: 280,
+									maxWidth: '100%',
+									background: theme.text,
+									borderRadius: 48,
+									padding: 14,
+									boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.08), 0 24px 60px rgba(42,38,33,0.25)',
+								}}
+							>
+								{/* Side buttons */}
+								<div style={{ position: 'absolute', left: -3, top: 86, width: 3, height: 26, background: theme.text, borderRadius: '2px 0 0 2px' }} />
+								<div style={{ position: 'absolute', left: -3, top: 122, width: 3, height: 44, background: theme.text, borderRadius: '2px 0 0 2px' }} />
+								<div style={{ position: 'absolute', right: -3, top: 104, width: 3, height: 62, background: theme.text, borderRadius: '0 2px 2px 0' }} />
+
+								<div
+									style={{
+										position: 'relative',
+										background: theme.bg,
+										borderRadius: 34,
+										padding: '40px 16px 22px',
+										minHeight: 440,
+										display: 'flex',
+										flexDirection: 'column',
+										gap: 10,
+										overflow: 'hidden',
+									}}
+								>
+									{/* Notch */}
 									<div
 										style={{
-											width: 48,
-											height: 48,
-											borderRadius: '50%',
-											backgroundColor: theme.primary,
-											color: 'white',
-											display: 'inline-flex',
-											alignItems: 'center',
-											justifyContent: 'center',
-											fontWeight: 700,
-											fontSize: '1.25rem',
-											marginBottom: '1rem',
+											position: 'absolute',
+											top: 12,
+											left: '50%',
+											transform: 'translateX(-50%)',
+											width: 76,
+											height: 21,
+											background: theme.text,
+											borderRadius: 999,
 										}}
-									>
-										{item.step}
-									</div>
-									<h3 style={{ color: theme.text, marginBottom: '0.5rem', fontSize: '1.1rem' }}>
-										{item.title}
-									</h3>
-									<p style={{ color: theme.textMuted, fontSize: '0.95rem', lineHeight: 1.6 }}>
-										{item.desc}
-									</p>
-								</div>
-							))}
-						</div>
+									/>
 
-						{/* SMS program summary */}
-						<div
-							style={{
-								marginTop: '3rem',
-								padding: '2rem',
-								background: 'white',
-								borderRadius: 16,
-								boxShadow: theme.shadow,
-								textAlign: 'left',
-								maxWidth: 600,
-								marginLeft: 'auto',
-								marginRight: 'auto',
-							}}
-						>
-							<h3 style={{ color: theme.text, marginBottom: '0.75rem', fontSize: '1.1rem' }}>
+									<div style={{ textAlign: 'center', color: theme.textLight, fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
+										The Millers
+									</div>
+									<div style={{ ...chatBubble, alignSelf: 'flex-start', background: theme.primaryBg, color: theme.text, borderRadius: '16px 16px 16px 4px' }}>
+										This week: what's one small thing someone did for you that made you feel loved?
+									</div>
+									<div style={{ ...chatBubble, alignSelf: 'flex-end', background: theme.primary, color: 'white', borderRadius: '16px 16px 4px 16px' }}>
+										Dad picked me up early from practice just to talk 💬
+									</div>
+									<div style={{ ...chatBubble, alignSelf: 'flex-start', background: theme.primaryBg, color: theme.text, borderRadius: '16px 16px 16px 4px' }}>
+										Sarah made my coffee exactly right without asking
+									</div>
+									<div style={{ ...chatBubble, alignSelf: 'flex-end', background: theme.primary, color: 'white', borderRadius: '16px 16px 4px 16px' }}>
+										Love this one
+									</div>
+
+									{/* Home indicator */}
+									<div
+										style={{
+											position: 'absolute',
+											bottom: 9,
+											left: '50%',
+											transform: 'translateX(-50%)',
+											width: 110,
+											height: 4,
+											background: theme.text,
+											opacity: 0.2,
+											borderRadius: 999,
+										}}
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div
+						style={{
+							marginTop: 100,
+							display: 'grid',
+							gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+							gap: 32,
+						}}
+					>
+						{steps.map((step) => (
+							<div key={step.n} style={{ padding: 28, background: 'white', borderRadius: 20, border: `1px solid ${theme.border}` }}>
+								<div
+									style={{
+										width: 38,
+										height: 38,
+										borderRadius: 11,
+										background: theme.primaryBg,
+										color: theme.primary,
+										display: 'inline-flex',
+										alignItems: 'center',
+										justifyContent: 'center',
+										fontWeight: 800,
+										fontSize: 16,
+										marginBottom: 16,
+									}}
+								>
+									{step.n}
+								</div>
+								<h3 style={{ color: theme.text, margin: '0 0 8px', fontSize: 16, fontWeight: 800 }}>{step.title}</h3>
+								<p style={{ color: theme.textMuted, fontSize: 14.5, lineHeight: 1.6, margin: 0 }}>{step.desc}</p>
+							</div>
+						))}
+					</div>
+
+					<div style={{ maxWidth: 680, margin: '80px auto 0' }}>
+						<div style={{ padding: '28px 32px', background: theme.bgSubtle, borderRadius: 20, textAlign: 'left' }}>
+							<h3 style={{ color: theme.text, margin: '0 0 12px', fontSize: 16, fontWeight: 800 }}>
 								About our text messaging service
 							</h3>
-							<p style={{ color: theme.textMuted, fontSize: '0.9rem', lineHeight: 1.7, marginBottom: '0.75rem' }}>
-								HoneyText sends weekly discussion questions and group updates via SMS to members who have opted in. We do not send marketing or promotional messages. Message and data rates may apply. Message frequency is about one per week per group, plus occasional transactional messages.
+							<p style={{ color: theme.textMuted, fontSize: 14, lineHeight: 1.7, margin: '0 0 12px' }}>
+								HoneyText sends weekly discussion questions and group updates via SMS to members who have opted in. We do not send marketing or promotional messages. Message and data rates may apply. Frequency is about one message per week per group, plus occasional transactional messages.
 							</p>
-							<p style={{ color: theme.textMuted, fontSize: '0.9rem', lineHeight: 1.7, margin: 0 }}>
-								Reply <strong>STOP</strong> to opt out at any time. Reply <strong>HELP</strong> for assistance. For questions, contact <a href="mailto:admin@honey-texting.app" style={{ color: theme.primary }}>admin@honey-texting.app</a>.
+							<p style={{ color: theme.textMuted, fontSize: 14, lineHeight: 1.7, margin: 0 }}>
+								Reply <strong>STOP</strong> to opt out at any time, or <strong>HELP</strong> for assistance. Questions? Contact{' '}
+								<a href="mailto:admin@honey-texting.app" style={{ color: theme.primary }}>admin@honey-texting.app</a>.
 							</p>
 						</div>
-					</Container>
-				</main>
+					</div>
+				</Container>
 
-				{/* Footer */}
-				<footer
-					style={{
-						borderTop: `1px solid ${theme.headerBorder}`,
-						padding: '2rem 0',
-						textAlign: 'center',
-					}}
-				>
+				<footer style={{ marginTop: 64, padding: '40px 32px', borderTop: `1px solid ${theme.headerBorder}`, textAlign: 'center' }}>
 					<Container maxWidth="wide">
-						<div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-							<Link to="/privacy" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: '0.9rem' }}>
+						<div style={{ display: 'flex', justifyContent: 'center', gap: 28, flexWrap: 'wrap', marginBottom: 14 }}>
+							<Link to="/privacy" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: 14 }}>
 								Privacy Policy
 							</Link>
-							<Link to="/terms" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: '0.9rem' }}>
+							<Link to="/terms" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: 14 }}>
 								Terms and Conditions
 							</Link>
-							<a href="mailto:admin@honey-texting.app" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: '0.9rem' }}>
+							<a href="mailto:admin@honey-texting.app" style={{ color: theme.textMuted, textDecoration: 'none', fontSize: 14 }}>
 								Contact
 							</a>
 						</div>
-						<p style={{ color: theme.textLight, fontSize: '0.85rem', margin: 0 }}>
+						<p style={{ color: theme.textLight, fontSize: 13, margin: 0 }}>
 							&copy; {new Date().getFullYear()} Honey Text LLC. All rights reserved.
 						</p>
 					</Container>
 				</footer>
-			</div>
+			</main>
 		</div>
 	);
 }
