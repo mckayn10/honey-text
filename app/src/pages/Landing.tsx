@@ -63,7 +63,7 @@ export function Landing() {
 						className="hero-grid"
 						style={{
 							display: 'grid',
-							gridTemplateColumns: '1.1fr 0.9fr',
+							gridTemplateColumns: 'minmax(0, 1fr) 300px',
 							gap: 56,
 							alignItems: 'center',
 						}}
@@ -92,11 +92,7 @@ export function Landing() {
 									color: theme.text,
 								}}
 							>
-								A weekly text
-								<br />
-								that brings you
-								<br />
-								closer together
+								A weekly text that brings you closer together
 							</h1>
 							<p
 								style={{
@@ -104,7 +100,7 @@ export function Landing() {
 									color: theme.textMuted,
 									margin: '0 0 32px',
 									lineHeight: 1.7,
-									maxWidth: 440,
+									maxWidth: 620,
 								}}
 							>
 								Thoughtful questions, sent right to the group chat — for
