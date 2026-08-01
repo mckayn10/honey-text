@@ -11,6 +11,30 @@ import { DateTime } from 'luxon'
 
 const router = express.Router()
 
+// How long after schedule_time a cron tick may still send.
+// Must be <= the external cron interval (e.g. 30 if the job runs every 30 minutes).
+const MATCH_WINDOW_MINUTES = (() => {
+  const parsed = Number(process.env.CRON_MATCH_WINDOW_MINUTES)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30
+})()
+
+function parseScheduleMinutes(timeStr: string): number | null {
+  const timeParts = String(timeStr ?? '').split(':')
+  const scheduleHour = parseInt(timeParts[0], 10)
+  const scheduleMinute = parseInt(timeParts[1] ?? '0', 10)
+  if (
+    Number.isNaN(scheduleHour) ||
+    Number.isNaN(scheduleMinute) ||
+    scheduleHour < 0 ||
+    scheduleHour > 23 ||
+    scheduleMinute < 0 ||
+    scheduleMinute > 59
+  ) {
+    return null
+  }
+  return scheduleHour * 60 + scheduleMinute
+}
+
 // POST /cron/send-weekly-questions - Send weekly questions (cron protected)
 // Add ?verbose=1 to see why groups were skipped (empty results otherwise).
 router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
@@ -68,14 +92,22 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
         }
 
         const timeStr = String(group.schedule_time ?? '')
-        const timeParts = timeStr.split(':')
-        const scheduleHour = parseInt(timeParts[0], 10)
-        const currentHour = parseInt(currentTime.split(':')[0], 10)
+        const scheduleTotalMinutes = parseScheduleMinutes(timeStr)
+        const currentTotalMinutes = groupTime.hour * 60 + groupTime.minute
 
-        if (Number.isNaN(scheduleHour) || currentHour !== scheduleHour) {
+        if (scheduleTotalMinutes === null) {
+          noteSkip(group, `invalid schedule_time=${timeStr}`)
+          continue
+        }
+
+        // Match only within [schedule_time, schedule_time + window).
+        // Hour-only matching used to re-send on every tick in the same hour
+        // (e.g. 11:00 schedule matched both 11:00 and 11:30 cron runs).
+        const minutesSinceSchedule = currentTotalMinutes - scheduleTotalMinutes
+        if (minutesSinceSchedule < 0 || minutesSinceSchedule >= MATCH_WINDOW_MINUTES) {
           noteSkip(
             group,
-            `wrong hour: now ${currentTime} in ${group.schedule_timezone}, schedule_time=${timeStr}`
+            `wrong time: now ${currentTime} in ${group.schedule_timezone}, schedule_time=${timeStr} (window=${MATCH_WINDOW_MINUTES}m)`
           )
           continue
         }
@@ -89,6 +121,29 @@ router.post('/send-weekly-questions', authenticateCron, async (req, res) => {
         if (!sendState) {
           noteSkip(group, 'missing group_send_state row for this group')
           continue
+        }
+
+        // Idempotency without a new column: skip if we already logged today's weekly question.
+        const dayStartUtc = groupTime.startOf('day').toUTC().toISO()
+        const dayEndUtc = groupTime.endOf('day').toUTC().toISO()
+        if (dayStartUtc && dayEndUtc) {
+          const { count: alreadySentCount, error: alreadySentError } = await supabaseAdmin
+            .from('group_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('group_id', group.id)
+            .eq('direction', 'outbound')
+            .eq('author', 'honeytext')
+            .like('body', "This week's question for%")
+            .gte('created_at', dayStartUtc)
+            .lte('created_at', dayEndUtc)
+
+          if (alreadySentError) {
+            throw alreadySentError
+          }
+          if ((alreadySentCount ?? 0) > 0) {
+            noteSkip(group, 'already sent weekly question today')
+            continue
+          }
         }
 
         const { data: questions } = await supabaseAdmin
