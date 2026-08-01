@@ -1,8 +1,9 @@
 import { supabaseAdmin } from './supabase.js'
-import { TIER_CONFIG } from './subscriptionConfig.js'
+import { TIER_CONFIG, BETA_TIER } from './subscriptionConfig.js'
 
 export function getTierLimits(tier: string | null): { maxGroups: number; maxMembersPerGroup: number } {
   if (!tier) return { maxGroups: 0, maxMembersPerGroup: 0 }
+  if (tier === BETA_TIER) return { maxGroups: Infinity, maxMembersPerGroup: Infinity }
   const config = TIER_CONFIG.find((t) => t.tier === tier)
   if (!config) return { maxGroups: 0, maxMembersPerGroup: 0 }
   return { maxGroups: config.maxGroups, maxMembersPerGroup: config.maxMembersPerGroup }

@@ -11,31 +11,36 @@ This guide walks through configuring Stripe for HoneyText subscriptions. Complet
 
 ## 1. Create Products and Prices
 
-Subscriptions charge the customer when they select a tier (no free trial). The first invoice must have an amount due so Stripe creates a PaymentIntent and we can show the card form.
+Every subscription starts with a **14-day free trial** (configured in code via `TRIAL_PERIOD_DAYS` in `api/src/lib/subscriptionConfig.ts`, not in the Stripe Dashboard). The card is collected upfront via a SetupIntent and saved to the subscription; Stripe automatically charges it when the trial ends. You do **not** need to configure a trial on the Price itself — leave prices at their normal recurring amount and the code applies the trial.
 
 1. Go to **Products** → **Add product**
-2. Create each product with **no free trial**:
+2. Create each product:
 
 ### Basic
 - **Name:** Basic
 - **Description:** 1 group, 5 members per group
 - **Pricing:** Standard pricing → **Recurring** → **Monthly** → **$5** (or your amount)
-- **Do not** add a free trial to the price
 - Save and copy the **Price ID** (starts with `price_`) → set as `STRIPE_BASIC_PRICE_ID`
 
 ### Pro
 - **Name:** Pro
 - **Description:** 3 groups, 5 members per group
-- **Pricing:** Recurring, Monthly, **$10** — **no free trial**
+- **Pricing:** Recurring, Monthly, **$10**
 - Copy the **Price ID** → set as `STRIPE_PRO_PRICE_ID`
 
 ### Premium
 - **Name:** Premium
 - **Description:** 10 groups, 10 members per group
-- **Pricing:** Recurring, Monthly, **$20** — **no free trial**
+- **Pricing:** Recurring, Monthly, **$20**
 - Copy the **Price ID** → set as `STRIPE_PREMIUM_PRICE_ID`
 
-**If you get "Could not create payment intent":** In Stripe, edit the Price (or create a new one) and ensure there is **no default free trial** on the product/price. The first invoice must charge immediately so we can collect the card.
+**If you get "Could not create a payment or setup intent":** make sure you're using the **Price ID** (starts with `price_`, not the Product ID which starts with `prod_`) in your env vars, and that the price is a real Recurring amount greater than $0.
+
+---
+
+## 1a. Beta / promo codes
+
+Set `BETA_PROMO_CODE` in `api/.env` to a code string of your choosing (e.g. `HONEYBETA`). Anyone who enters this code on the Billing page (`POST /billing/redeem-promo`) gets full, unlimited access with no Stripe subscription or charge — their `subscription_tier` is set to the reserved value `beta`. It's a single shared code with no redemption limit; rotate it by changing the env var and redeploying if you need to retire it.
 
 ---
 
@@ -55,6 +60,7 @@ Add to your environment:
 | `STRIPE_PRO_PRICE_ID` | `api/.env` | Pro price ID |
 | `STRIPE_PREMIUM_PRICE_ID` | `api/.env` | Premium price ID |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | `app/.env` | Publishable key |
+| `BETA_PROMO_CODE` | `api/.env` | Your chosen beta code (see 1a above) — optional, omit to disable code redemption |
 
 Tiers without a price ID in env are not returned by `GET /billing/plans`. Add all three if you want Basic, Pro, and Premium to appear.
 

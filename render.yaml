@@ -47,3 +47,6 @@ services:
             sync: false
           - key: STRIPE_PREMIUM_PRICE_ID
             sync: false
+          # Beta/promo code redemption (see STRIPE_SETUP.md)
+          - key: BETA_PROMO_CODE
+            sync: false

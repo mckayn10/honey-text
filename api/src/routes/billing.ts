@@ -6,6 +6,8 @@ import {
   getPlansForFrontend,
   getAllowedPriceIds,
   getTierByPriceId,
+  TRIAL_PERIOD_DAYS,
+  BETA_TIER,
 } from '../lib/subscriptionConfig.js'
 import { checkCanSwitchToTier } from '../lib/subscriptionLimits.js'
 
@@ -38,10 +40,15 @@ router.get('/status', authenticateUser, async (req: AuthRequest, res) => {
     if (error) throw error
 
     let subscription_status: string | null = null
-    if (user?.stripe_subscription_id && stripe) {
+    let trial_end: string | null = null
+    if (user?.subscription_tier === BETA_TIER) {
+      // Beta/promo access: unlimited, no Stripe subscription behind it
+      subscription_status = 'active'
+    } else if (user?.stripe_subscription_id && stripe) {
       try {
         const sub = await stripe.subscriptions.retrieve(user.stripe_subscription_id)
         subscription_status = sub.status
+        if (sub.trial_end) trial_end = new Date(sub.trial_end * 1000).toISOString()
       } catch {
         subscription_status = null
       }
@@ -51,10 +58,42 @@ router.get('/status', authenticateUser, async (req: AuthRequest, res) => {
       subscription_tier: user?.subscription_tier ?? null,
       stripe_customer_id: user?.stripe_customer_id ?? null,
       subscription_status,
+      trial_end,
     })
   } catch (error: any) {
     console.error('Error fetching billing status:', error)
     res.status(500).json({ error: error.message || 'Failed to fetch billing status' })
+  }
+})
+
+// POST /billing/redeem-promo - Redeem a beta/promo code for full unlimited access (no Stripe subscription)
+router.post('/redeem-promo', authenticateUser, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id
+    const { code } = req.body
+
+    if (!code || typeof code !== 'string' || !code.trim()) {
+      return res.status(400).json({ error: 'Missing code' })
+    }
+
+    const expected = process.env.BETA_PROMO_CODE
+    if (!expected) {
+      return res.status(503).json({ error: 'Promo codes are not configured' })
+    }
+
+    if (code.trim().toLowerCase() !== expected.trim().toLowerCase()) {
+      return res.status(400).json({ error: 'Invalid code' })
+    }
+
+    await supabaseAdmin
+      .from('users')
+      .update({ subscription_tier: BETA_TIER, beta_redeemed_at: new Date().toISOString() })
+      .eq('id', userId)
+
+    res.json({ success: true, subscription_tier: BETA_TIER })
+  } catch (error: any) {
+    console.error('Error redeeming promo code:', error)
+    res.status(500).json({ error: error.message || 'Failed to redeem code' })
   }
 })
 
@@ -103,11 +142,26 @@ router.post('/create-subscription', authenticateUser, async (req: AuthRequest, r
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: price_id }],
+      trial_period_days: TRIAL_PERIOD_DAYS,
       payment_behavior: 'default_incomplete',
       payment_settings: { save_default_payment_method: 'on_subscription' },
-      expand: ['latest_invoice', 'latest_invoice.payment_intent', 'latest_invoice.confirmation_secret'],
+      expand: [
+        'latest_invoice', 'latest_invoice.payment_intent', 'latest_invoice.confirmation_secret',
+        'pending_setup_intent',
+      ],
       metadata: { supabase_user_id: userId },
     })
+
+    // Trial subscriptions have a $0 first invoice, so Stripe collects and saves the card via a
+    // SetupIntent instead of a PaymentIntent (nothing is charged until the trial ends).
+    const setupIntent = subscription.pending_setup_intent
+    if (setupIntent && typeof setupIntent === 'object' && setupIntent.client_secret) {
+      return res.json({
+        client_secret: setupIntent.client_secret,
+        subscription_id: subscription.id,
+        intent_type: 'setup',
+      })
+    }
 
     let client_secret: string | null = null
     const rawInvoice = subscription.latest_invoice
@@ -156,7 +210,8 @@ router.post('/create-subscription', authenticateUser, async (req: AuthRequest, r
     }
 
     if (!client_secret) {
-      // $0 first invoice (e.g. free trial): no PaymentIntent, subscription may already be active/trialing
+      // Last-resort fallback: normally trial subscriptions are handled above via pending_setup_intent,
+      // and non-trial subscriptions get a PaymentIntent. This covers edge cases (e.g. a $0 price).
       const subStatus = subscription.status
       let invoiceAmountDue = 0
       let invStatus: string | undefined = undefined
@@ -183,11 +238,11 @@ router.post('/create-subscription', authenticateUser, async (req: AuthRequest, r
       }
       console.error('[billing] No payment intent client_secret. Subscription:', subscription.id, 'status:', subStatus, 'invoice:', invoiceId, 'invoice_status:', invStatus, 'amount_due:', invoiceAmountDue)
       return res.status(500).json({
-        error: 'Could not create payment intent. In Stripe, this price must charge immediately: remove any free trial, use Recurring with amount > 0, and use the Price ID (not Product ID) in your env.',
+        error: 'Could not create a payment or setup intent for this subscription. Use Recurring with amount > 0 and the Price ID (not Product ID) in your env.',
       })
     }
 
-    res.json({ client_secret, subscription_id: subscription.id })
+    res.json({ client_secret, subscription_id: subscription.id, intent_type: 'payment' })
   } catch (error: any) {
     console.error('Error creating subscription:', error)
     res.status(500).json({ error: error.message || 'Failed to create subscription' })

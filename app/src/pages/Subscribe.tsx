@@ -7,6 +7,8 @@ import { Container, Button, Card, Loading } from '../components';
 import { theme } from '../theme';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+/** Must match TRIAL_PERIOD_DAYS in api/src/lib/subscriptionConfig.ts */
+const TRIAL_PERIOD_DAYS_DISPLAY = 14;
 
 interface Plan {
 	tier: string;
@@ -20,13 +22,16 @@ interface Plan {
 interface BillingStatus {
 	subscription_tier: string | null;
 	subscription_status: string | null;
+	trial_end: string | null;
 }
 
 function CheckoutForm({
 	subscriptionId,
+	mode,
 	onSuccess,
 }: {
 	subscriptionId: string;
+	mode: 'setup' | 'payment';
 	onSuccess: () => void;
 }) {
 	const stripe = useStripe();
@@ -41,12 +46,12 @@ function CheckoutForm({
 		setError(null);
 		try {
 			const returnUrl = `${window.location.origin}/app/subscribe?success=true&subscription_id=${encodeURIComponent(subscriptionId)}`;
-			const { error: confirmError } = await stripe.confirmPayment({
-				elements,
-				confirmParams: { return_url: returnUrl },
-			});
+			const { error: confirmError } =
+				mode === 'setup'
+					? await stripe.confirmSetup({ elements, confirmParams: { return_url: returnUrl } })
+					: await stripe.confirmPayment({ elements, confirmParams: { return_url: returnUrl } });
 			if (confirmError) {
-				setError(confirmError.message || 'Payment failed');
+				setError(confirmError.message || (mode === 'setup' ? 'Could not save card' : 'Payment failed'));
 				setLoading(false);
 				return;
 			}
@@ -80,7 +85,7 @@ function CheckoutForm({
 			)}
 			<div style={{ marginTop: '1.5rem' }}>
 				<Button type="submit" variant="primary" disabled={!stripe || loading} style={{ borderRadius: 999 }}>
-					{loading ? 'Processing...' : 'Subscribe'}
+					{loading ? 'Processing...' : mode === 'setup' ? 'Start free trial' : 'Subscribe'}
 				</Button>
 			</div>
 		</form>
@@ -154,12 +159,16 @@ export function Subscribe() {
 	const [, setSelectedPlan] = useState<Plan | null>(null);
 	const [clientSecret, setClientSecret] = useState<string | null>(null);
 	const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
+	const [intentType, setIntentType] = useState<'setup' | 'payment'>('payment');
 	const [creating, setCreating] = useState(false);
 	const [updating, setUpdating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [pendingPlan, setPendingPlan] = useState<Plan | null>(null);
 	const [preview, setPreview] = useState<{ amount_due: number; currency: string; is_charge: boolean; is_credit: boolean } | null>(null);
 	const [previewLoading, setPreviewLoading] = useState(false);
+	const [promoCode, setPromoCode] = useState('');
+	const [redeemingPromo, setRedeemingPromo] = useState(false);
+	const [promoError, setPromoError] = useState<string | null>(null);
 
 	useEffect(() => {
 		loadPlansAndStatus();
@@ -211,6 +220,7 @@ export function Subscribe() {
 			}
 			setClientSecret(data.client_secret);
 			setSubscriptionId(data.subscription_id);
+			setIntentType(data.intent_type === 'setup' ? 'setup' : 'payment');
 		} catch (err: any) {
 			setError(err.message || 'Failed to start checkout');
 			setSelectedPlan(null);
@@ -221,6 +231,24 @@ export function Subscribe() {
 
 	const handleSuccess = () => {
 		navigate('/app/groups');
+	};
+
+	const handleRedeemPromo = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setRedeemingPromo(true);
+		setPromoError(null);
+		try {
+			await apiRequest('/billing/redeem-promo', {
+				method: 'POST',
+				body: JSON.stringify({ code: promoCode }),
+			});
+			setPromoCode('');
+			await loadPlansAndStatus();
+		} catch (err: any) {
+			setPromoError(err.message || 'Failed to redeem code');
+		} finally {
+			setRedeemingPromo(false);
+		}
 	};
 
 	const handleRequestChangePlan = async (plan: Plan) => {
@@ -276,8 +304,15 @@ export function Subscribe() {
 		);
 	}
 
-	const hasSubscription = status?.subscription_tier && (status.subscription_status === 'active' || status.subscription_status === 'past_due');
+	const isBeta = status?.subscription_tier === 'beta';
+	const hasSubscription =
+		!!status?.subscription_tier &&
+		(status.subscription_status === 'active' || status.subscription_status === 'past_due' || status.subscription_status === 'trialing');
 	const currentPlan = plans.find((p) => p.tier === status?.subscription_tier);
+	const trialDaysLeft =
+		status?.subscription_status === 'trialing' && status.trial_end
+			? Math.max(0, Math.ceil((new Date(status.trial_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+			: null;
 
 	return (
 		<div>
@@ -295,8 +330,55 @@ export function Subscribe() {
 					</Card>
 				)}
 
-				{hasSubscription ? (
+				{isBeta ? (
+					<div
+						style={{
+							background: 'white',
+							border: `1px solid ${theme.border}`,
+							borderRadius: 18,
+							padding: 24,
+						}}
+					>
+						<span
+							style={{
+								display: 'inline-block',
+								fontSize: 11,
+								fontWeight: 800,
+								color: theme.successText,
+								background: theme.successBg,
+								padding: '4px 10px',
+								borderRadius: 999,
+								marginBottom: 8,
+								textTransform: 'uppercase',
+								letterSpacing: '0.04em',
+							}}
+						>
+							Beta access
+						</span>
+						<p style={{ margin: 0, fontSize: 19, fontWeight: 800, color: theme.text }}>
+							Full access, on us
+						</p>
+						<p style={{ margin: '6px 0 0', fontSize: 14, color: theme.textMuted, lineHeight: 1.6 }}>
+							You redeemed a beta code, so your account has unlimited groups and members with no subscription or charge.
+						</p>
+					</div>
+				) : hasSubscription ? (
 					<>
+						{trialDaysLeft !== null && (
+							<div
+								style={{
+									background: theme.primaryBg,
+									border: `1px solid ${theme.border}`,
+									borderRadius: 14,
+									padding: '12px 18px',
+									marginBottom: 20,
+									fontSize: 14,
+									color: theme.text,
+								}}
+							>
+								<strong>Free trial</strong> — {trialDaysLeft === 0 ? 'ends today' : `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left`}. Your card will be charged automatically when it ends.
+							</div>
+						)}
 						<div
 							style={{
 								background: 'white',
@@ -367,8 +449,13 @@ export function Subscribe() {
 				) : clientSecret && subscriptionId ? (
 					<Card>
 						<h2 style={{ marginTop: 0, marginBottom: '1rem', fontSize: '1.15rem' }}>
-							Payment details
+							{intentType === 'setup' ? 'Start your 14-day free trial' : 'Payment details'}
 						</h2>
+						{intentType === 'setup' && (
+							<p style={{ marginTop: 0, marginBottom: '1rem', fontSize: '0.9rem', color: theme.textMuted }}>
+								We'll save your card now but won't charge it until the trial ends in {TRIAL_PERIOD_DAYS_DISPLAY} days. Cancel any time before then from Billing.
+							</p>
+						)}
 						<Elements
 							stripe={stripePromise}
 							options={{
@@ -378,6 +465,7 @@ export function Subscribe() {
 						>
 							<CheckoutForm
 								subscriptionId={subscriptionId}
+								mode={intentType}
 								onSuccess={handleSuccess}
 							/>
 						</Elements>
@@ -405,7 +493,7 @@ export function Subscribe() {
 				) : (
 					<>
 						<p style={{ color: theme.textMuted, marginBottom: '1.5rem' }}>
-							Subscribe to create groups and send weekly questions.
+							Subscribe to create groups and send weekly questions. Every plan includes a 14-day free trial — you won't be charged until it ends.
 						</p>
 						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
 							{plans.map((plan) => (
@@ -424,6 +512,52 @@ export function Subscribe() {
 								No plans available. Contact support.
 							</p>
 						)}
+
+						<div
+							style={{
+								marginTop: 28,
+								background: 'white',
+								border: `1px solid ${theme.border}`,
+								borderRadius: 18,
+								padding: 22,
+							}}
+						>
+							<h2 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 800, color: theme.text }}>
+								Have a beta code?
+							</h2>
+							<p style={{ margin: '0 0 14px', fontSize: 13.5, color: theme.textMuted }}>
+								Redeem it for full access with no subscription or charge.
+							</p>
+							<form onSubmit={handleRedeemPromo} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+								<input
+									type="text"
+									value={promoCode}
+									onChange={(e) => setPromoCode(e.target.value)}
+									placeholder="Enter code"
+									required
+									style={{
+										flex: '1 1 200px',
+										padding: '10px 14px',
+										border: `1px solid ${theme.border}`,
+										borderRadius: 999,
+										fontSize: 14,
+										fontFamily: 'inherit',
+										background: theme.bg,
+									}}
+								/>
+								<Button
+									type="submit"
+									variant="primary"
+									disabled={redeemingPromo || !promoCode.trim()}
+									style={{ borderRadius: 999, padding: '10px 22px', width: 'auto' }}
+								>
+									{redeemingPromo ? 'Redeeming...' : 'Redeem'}
+								</Button>
+							</form>
+							{promoError && (
+								<p style={{ margin: '10px 0 0', color: theme.errorText, fontSize: 13.5 }}>{promoError}</p>
+							)}
+						</div>
 					</>
 				)}
 

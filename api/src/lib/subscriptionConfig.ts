@@ -13,6 +13,15 @@ export interface TierConfig {
   priceDisplay: string
 }
 
+/** Free trial length for new paid subscriptions (card collected upfront via SetupIntent, first charge after this many days). */
+export const TRIAL_PERIOD_DAYS = 14
+
+/**
+ * Special tier granted by redeeming BETA_PROMO_CODE. Not part of TIER_CONFIG (so it never
+ * appears as a purchasable plan) and has no Stripe price — see getTierLimits' special case.
+ */
+export const BETA_TIER = 'beta'
+
 const TIER_CONFIG_RAW: Omit<TierConfig, 'priceId'>[] = [
   { tier: 'basic', maxGroups: 1, maxMembersPerGroup: 5, label: 'Basic', priceDisplay: '$5/month' },
   { tier: 'pro', maxGroups: 3, maxMembersPerGroup: 5, label: 'Pro', priceDisplay: '$10/month' },
