@@ -128,7 +128,7 @@ export function Landing() {
 									Start connecting
 								</Link>
 								<span style={{ color: theme.textLight, fontSize: 14 }}>
-									Free to try · no credit card
+									Free 14-day trial · cancel anytime
 								</span>
 							</div>
 						</div>
